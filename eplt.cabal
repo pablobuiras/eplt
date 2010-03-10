@@ -1,0 +1,12 @@
+Name:                eplt
+Version:             0.1
+Description:         Equational Propositional Logic Toolkit
+License:             GPL
+Build-Type:          Simple
+Cabal-Version:       >=1.2
+
+Executable eplt
+  Main-is:           Main.hs
+  other-modules:     Formula Formula.Parser
+  hs-source-dirs:    src
+  Build-Depends:     base >= 3 && < 5, parsec >= 2
