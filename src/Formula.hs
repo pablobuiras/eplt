@@ -9,10 +9,31 @@ data Formula = Var String
              | Formula :== Formula
              | Formula := Formula
              | Not Formula
-             deriving (Show, Eq, Ord)
+             deriving (Eq)
 
 infixl 5 :&, :|
 infixl 4 :<=
 infixr 4 :=>
 infixl 3 :==
 infix 2 :=
+
+isAtom :: Formula -> Bool
+isAtom (Var _) = True
+isAtom FTrue = True
+isAtom FFalse = True
+isAtom (Not _) = True
+isAtom _ = False
+
+
+-- Normalised formulae are equivalent modulo associativity of binary ops
+normal :: Formula -> Formula
+normal ((f1 :& f2) :& f3) = normal $ f1 :& (f2 :& f3)
+normal ((f1 :| f2) :| f3) = normal $ f1 :| (f2 :| f3)
+normal (f1 :& f2) = normal f1 :& normal f2
+normal (f1 :| f2) = normal f1 :| normal f2
+normal (f1 :=> f2) = normal f1 :=> normal f2
+normal (f1 :<= f2) = normal f1 :<= normal f2
+normal (f1 :== f2) = normal f1 :== normal f2
+normal (f1 := f2) = normal f1 := normal f2
+normal (Not f) = Not (normal f)
+normal f = f

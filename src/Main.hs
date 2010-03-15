@@ -2,6 +2,7 @@ module Main where
 
 import Formula
 import Formula.Parser (formula)
+import Formula.Pretty
 import Text.ParserCombinators.Parsec
 import Data.Either
 import System.IO
