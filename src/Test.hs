@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Test where
 
 import Test.QuickCheck
@@ -12,7 +14,7 @@ import Control.Monad
 instance Arbitrary Formula where
     arbitrary = frequency [(3,return FTrue),
                            (3,return FFalse),
-                           (10,fmap Var (elements (map (:[]) "pqrsabcde"))),
+                           (10,fmap Var (elements (map (:[]) "pqrstabcde"))),
                            (2,op (:&)), (2,op (:|)),
                            (1,op (:=>)), (1,op (:<=)),
                            (1,op (:==)),
