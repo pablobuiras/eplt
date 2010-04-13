@@ -87,5 +87,5 @@ h f =
 
 
 
-step_ :: DecoTree -> Maybe Formula
-step_ 
+--step_ :: DecoTree -> Maybe Formula
+--step_ 
