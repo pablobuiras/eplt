@@ -1,5 +1,6 @@
 module Main where
 
+import Prover
 import Formula
 import Formula.Parser (formula)
 import Formula.Pretty

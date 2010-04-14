@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-
 module Formula.Pretty where
 
 import Formula
@@ -8,7 +6,7 @@ import Text.PrettyPrint.HughesPJ
 data Context = And | Or | Impl | Conseq | Equiv | Top
              deriving (Eq)
 
-contextOf :: TermFormula a -> Context
+contextOf :: Formula -> Context
 contextOf (_ :& _) = And
 contextOf (_ :| _) = Or
 contextOf (_ :=> _) = Impl
@@ -39,7 +37,6 @@ binOp op d1 d2 = d1 <+> op <+> d2
 
 pp :: Formula -> Doc
 pp (Var v) = text v
--- let z = reverse . tail . reverse . tail in text (z (show v))
 pp FTrue = text "true"
 pp FFalse = text "false"
 pp (f1 :& f2) = binOp (text "/\\") (ppNest And f1) (ppNest And f2)
