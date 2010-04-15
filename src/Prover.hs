@@ -59,7 +59,9 @@ data DecoTree = DTVar String
 	      | DTOr [(Law, Subst)] DecoTree DecoTree
 	      deriving (Eq, Show)
 
-testLaws = [(Var "p" :& Var "p", Var "p")]
+testLaws = [(Var "a" :& Var "a", Var "a"), (Var "a" :& Var "b", Var "b" :& Var "a"), ((Var "a" :& Var "b") :& Var "c",  (Var "a" :& (Var "b" :& Var "c"))) ]
+testFormula = ((Var "q" :& Var "q") :& Var "p", FTrue) 
+
 
 decoTree :: Formula -> [Law] -> DecoTree
 decoTree f ls = 
@@ -76,16 +78,53 @@ unify l@((x,y):xs) | (ls == [] || ls == [y]) && (unify xs == Just xs) = Just l
       		   | otherwise = Nothing
       		   where ls = nub [b | (a,b) <- xs, a == x]
 
-h :: DecoTree -> Maybe (Law, Subst)
-h f =
+h1 :: DecoTree -> Maybe (Law, Subst)
+h1 f =
   case f of
        DTVar x -> Nothing
        DTTrue  -> Nothing
        DTFalse -> Nothing
-       DTAnd l t1 t2 -> (listToMaybe l) `mplus` (h t1) `mplus` (h t2)
-       DTOr  l t1 t2 -> (listToMaybe l) `mplus` (h t1) `mplus` (h t2)
+       DTAnd l t1 t2 -> (listToMaybe l) `mplus` (h1 t1) `mplus` (h1 t2)
+       DTOr  l t1 t2 -> (listToMaybe l) `mplus` (h1 t1) `mplus` (h1 t2)
 
 
+h2 :: DecoTree -> DecoTree
 
-step_ :: DecoTree -> Maybe Formula
-step_ 
+h2 f =  
+   case f of
+        DTVar x -> DTVar x
+        DTTrue  -> DTTrue
+	DTFalse -> DTFalse
+	DTAnd []     t1 t2 -> DTAnd [] (h2 t1) (h2 t2) 
+	DTAnd (s:ss) t1 t2 -> DTAnd ss t1 t2
+	DTOr []     t1 t2 -> DTOr [] (h2 t1) (h2 t2)
+	DTOr (s:ss) t1 t2 -> DTOr ss t1 t2
+
+h dt = (h1 dt, h2 dt) -- Not so fast.
+
+
+applyl :: Formula -> (Law, Subst) -> Formula
+applyl f ((lf, rf), s) = replace lf' rf' f
+                         where lf' = substitute lf s
+			       rf' = substitute rf s
+
+substitute :: Formula -> Subst -> Formula
+substitute f = foldr (\(s,d) -> replace (Var s) d ) f 
+
+mkcomp_ :: DecoTree -> DecoTree -> (Formula,Formula) -> [(Formula,Formula)]
+mkcomp_  ldt rdt (lf,rf) =
+         case (h ldt) of
+	      (Nothing, _)  -> []
+	      (Just s, ldt') -> ((applyl lf s),rf):(mkcomp_ rdt ldt' (rf,lf)) -- I'm swapping the formula and the decotrees
+
+mkcomp :: (Formula,Formula) -> [(Formula,Formula)]
+mkcomp f@(lf,rf) = mkcomp_ (decoTree lf testLaws) (decoTree rf testLaws) f
+
+
+step :: [[(Formula,Formula)]] -> [(Formula,Formula)]
+step []          = []
+step ([]:rs)      =  step rs
+step ((f:fs):rs)  =  f:( step ( (mkcomp f):rs++[fs]) )
+
+--step_ :: DecoTree -> Maybe Formula
+--step_ 
