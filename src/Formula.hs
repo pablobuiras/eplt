@@ -1,5 +1,7 @@
 module Formula where
 
+import Data.List
+
 data TermFormula a = Var a
              | FTrue | FFalse
              | (TermFormula a) :& (TermFormula a)
@@ -42,6 +44,21 @@ isAtom FTrue = True
 isAtom FFalse = True
 isAtom (Not _) = True
 isAtom _ = False
+
+
+vars :: Eq a => TermFormula a -> [a]
+vars f =
+    case f of
+      FTrue -> []
+      FFalse -> []
+      Var x -> [x]
+      f1 :& f2 -> vars f1 `union` vars f2
+      f1 :| f2 -> vars f1 `union` vars f2
+      f1 :=> f2 -> vars f1 `union` vars f2
+      f1 :<= f2 -> vars f1 `union` vars f2
+      f1 :== f2 -> vars f1 `union` vars f2
+      f1 := f2 -> vars f1 `union` vars f2
+      Not f -> vars f
 
 
 -- Normalised formulae are equivalent modulo associativity of binary ops
