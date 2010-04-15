@@ -27,7 +27,7 @@ isAtom (Not _) = True
 isAtom _ = False
 
 
-vars :: Formula -> [a]
+vars :: Formula -> [String]
 vars f =
     case f of
       FTrue -> []
