@@ -110,10 +110,12 @@ testLaws = [
 	      
 	      -- Distributividad 
 	      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")),	      
-	      (Var "a" :| (Var "b" :== Var "c") :== (Var "a" :| Var "b") , (Var "a" :| Var "c")),
+	      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ), (Var "a" :| Var "c")),
 	      
-	      (Var "a" :& (Var "b" :== Var "c"), (Var "a" :& Var "b") :== (Var "a" :& Var "c")),	      
-	      (Var "a" :& (Var "b" :== Var "c") :== (Var "a" :& Var "b") , (Var "a" :& Var "c"))
+	      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p"),	      
+	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p"),
+	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c")) , Var "p")
+
 
               --(Var "a" :& Var "b", Var "b" :& Var "a"),
 
@@ -157,12 +159,14 @@ ordLaws x = case x of
 		      (Var "a" :| (Var "b" :| Var "c"), (Var "a" :| Var "b") :| Var "c") -> 2
 		      
 		      -- Distributidad
-		      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")) ->  2	      
-		      (Var "a" :| (Var "b" :== Var "c") :== (Var "a" :| Var "b") , (Var "a" :| Var "c")) -> 0
+		      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")) ->  1	      
+		      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ) , (Var "a" :| Var "c")) -> 0
 		      
-		      (Var "a" :& (Var "b" :== Var "c"), (Var "a" :& Var "b") :== (Var "a" :& Var "c")) ->  2	      
-		      (Var "a" :& (Var "b" :== Var "c") :== (Var "a" :& Var "b") , (Var "a" :& Var "c")) -> 0
-
+		      
+		      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p") -> 1  
+		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p")-> 0  
+		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> 0
+		      
 
 
 testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
