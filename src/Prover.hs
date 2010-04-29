@@ -44,16 +44,16 @@ match (_ :=> _ ) _ = mzero
 match (_ :<= _ ) _ = mzero
 match _ _ = mzero
 
-findLaws :: Formula -> [Law] -> [(Law,Subst)]
-findLaws f ls = let findLaw f l@(lhs,_) = fmap (\s -> (l,s)) (match lhs f)
-	      	in catMaybes $ map g $ map (findLaw f) ls
+unify :: (Functor m, MonadPlus m) => Subst -> m Subst
+unify [] = return []
+unify ((x,y):xs) | (ls == [] || ls == [y]) = fmap ((x,y):) (unify xs)
+      		 | otherwise = mzero
+    where ls = nub [b | (a,b) <- xs, a == x]
 
-t f x = trace (show x) (f x)
-
-g :: Maybe (Law, Subst) -> Maybe (Law, Subst)
-g Nothing = Nothing
-g (Just (x,y)) | unify y == Nothing = Nothing
-       	       | otherwise  	    = Just (x,y)
+findLaws :: (Functor m, MonadPlus m) => Formula -> [Law] -> m (Law, Subst)
+findLaws f = foldr findLaw mzero
+    where findLaw l m = matcher l f `mplus` m
+          matcher l@(lhs,_) f = fmap (\s -> (l,s)) (match lhs f >>= unify)
 
 
 data DecoTree = DTVar String
@@ -184,12 +184,6 @@ decoTree f ls =
 	      f1 :& f2 -> DTAnd (findLaws f ls) (decoTree f1 ls) (decoTree f2 ls)
 	      f1 :| f2 -> DTOr (findLaws f ls) (decoTree f1 ls) (decoTree f2 ls)
 	      f1 :== f2 -> DTEq (findLaws f ls) (decoTree f1 ls) (decoTree f2 ls)
-
-unify :: Subst -> Maybe Subst
-unify [] = Just []
-unify l@((x,y):xs) | (ls == [] || ls == [y]) && (unify xs == Just xs) = Just l
-      		   | otherwise = Nothing
-      		   where ls = nub [b | (a,b) <- xs, a == x]
 
 h1 :: DecoTree -> Maybe (Law, Subst)
 h1 f =

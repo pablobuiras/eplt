@@ -48,7 +48,7 @@ pp (f1 := f2) = binOp (text "=") (ppNest Equiv f1) (ppNest Equiv f2)
 pp (Not f) = char '~' <> parens (ppNest Top f)
 
 ppNest :: Context -> Formula -> Doc
-ppNest c f | not (isAtom f) && contextOf f < c = parens (pp f)
+ppNest c f | not (isAtom f) && contextOf f <= c = parens (pp f)
            | otherwise = pp f
 
 instance Show Formula where
