@@ -22,7 +22,7 @@ repl :: IO ()
 repl = forever $
          do putStr "> "
 	    l <- getLine
-            when (null l) $ return ()
+            when (null l) repl
             case parse formula "<interactive>" l of
               Left err -> print err
               Right f -> do putStr "Checking..."
