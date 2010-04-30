@@ -225,13 +225,17 @@ interleaveMap f xs  = interleaveCat $ map f xs
  
 step :: Int -> Formula -> [Formula]
 step e f = c `mplus` interleaveMap (step e') c
-           where (c,e') = heuristica_id e f $ mkcomp f
+           where (c,e') = heuristica_0 e f $ mkcomp f
 
 heuristica_id :: HState -> Formula -> [Formula] -> ([Formula], HState)
 heuristica_id e _ fs = (fs, e)
 
+heuristica_0 :: HState -> Formula -> [Formula] -> ([Formula], HState)
+heuristica_0 e _ fs = ((sortBy (\x y -> compare (size x) (size y)) xs)++ys, e)  
+                      where (xs,ys) = partition (\f -> size f <= 2) fs
+
 heuristica_1 :: HState -> Formula -> [Formula] -> ([Formula], HState)
-heuristica_1 e _ fs = x where x = (sortBy (\x y -> if (e<2) then compare (size y) (size x) else compare (size x) (size y)) fs, e+1)
+heuristica_1 e _ fs = x where x = (sortBy (\x y -> if (e<5) then compare (size y) (size x) else compare (size x) (size y)) fs, e+1)
 
 size :: Formula -> Int
 size FTrue = 0
