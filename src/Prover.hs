@@ -11,6 +11,8 @@ import Debug.Trace
 
 type Law = (Formula, Formula)
 
+type HState = Int
+
 type Subst = [(String, Formula)]
 (|->) :: String -> Formula -> Subst
 v |-> f = [(v,f)]
@@ -101,18 +103,18 @@ testLaws = [
 	      (Var "a" :| (Var "b" :| Var "c"), (Var "a" :| Var "b") :| Var "c"),
 	      
 	      -- Regla dorada
-	      ((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))),
+	      ((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))), -- Beware!
 	      ((Var "a" :& Var "b") :==  Var "a", Var "b" :== (Var "a" :| Var "b")),
-	      ((Var "a" :& Var "b") :== (Var "a" :== Var "b"),(Var "a" :| Var "b")),
-	      ((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))),
+	      ((Var "a" :& Var "b") :== (Var "a" :== Var "b"),(Var "a" :| Var "b")),  -- Beware!
+	      ((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))), -- Beware!
 	      ((Var "a" :| Var "b") :==  Var "a", Var "b" :== (Var "a" :& Var "b")),
-	      ((Var "a" :| Var "b") :== (Var "a" :== Var "b"),(Var "a" :& Var "b")),
+	      ((Var "a" :| Var "b") :== (Var "a" :== Var "b"),(Var "a" :& Var "b")),  -- Beware!
 	      
 	      -- Distributividad 
 	      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")),	      
 	      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ), (Var "a" :| Var "c")),
 	      
-	      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p"),	      
+	      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p"),
 	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p"),
 	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c")) , Var "p")
 
@@ -120,7 +122,7 @@ testLaws = [
               --(Var "a" :& Var "b", Var "b" :& Var "a"),
 
 	   ]
-ordLaws x = case x of 
+{-ordLaws x = case x of 
                       -- Reglas que SIEMPRE conviene seleccionar primero (reducen estructura)
                       (Var "a" :== Var "a", FTrue) 	     	    -> 0
 		      (FTrue :== FFalse, FFalse)		    -> 0
@@ -147,32 +149,33 @@ ordLaws x = case x of
 		      -- Reglas que conviene aplicar en ultimo lugar
 		      
 		      -- Permutatividad
-                      (Var "a" :== Var "b", Var "b" :== Var "a") -> 2
-		      (Var "a" :& Var "b", Var "b" :& Var "a")   -> 2
-		      (Var "a" :| Var "b", Var "b" :| Var "a")   -> 2
+                      (Var "a" :== Var "b", Var "b" :== Var "a") -> 1
+		      (Var "a" :& Var "b", Var "b" :& Var "a")   -> 1
+		      (Var "a" :| Var "b", Var "b" :| Var "a")   -> 1
 		      
 		      --(Var "a" :| Var "b", Not ((Not (Var "a")) :& (Not (Var "b")))) -> 2
 		      
 		      -- Asociatividad
-		      (Var "a" :== (Var "b" :== Var "c"), (Var "a" :== Var "b") :== Var "c") -> 2
-		      (Var "a" :& (Var "b" :& Var "c"), (Var "a" :& Var "b") :& Var "c") -> 2
-		      (Var "a" :| (Var "b" :| Var "c"), (Var "a" :| Var "b") :| Var "c") -> 2
+		      (Var "a" :== (Var "b" :== Var "c"), (Var "a" :== Var "b") :== Var "c") -> 1
+		      (Var "a" :& (Var "b" :& Var "c"), (Var "a" :& Var "b") :& Var "c") -> 1
+		      (Var "a" :| (Var "b" :| Var "c"), (Var "a" :| Var "b") :| Var "c") -> 1
 		      
 		      -- Distributidad
-		      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")) ->  1	      
-		      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ) , (Var "a" :| Var "c")) -> 0
+		      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")) ->  1
+		      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ) , (Var "a" :| Var "c")) -> 1
 		      
 		      
-		      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p") -> 1  
+		      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p") -> 1
 		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p")-> 0  
-		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> 0
+		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> -1
 		      
-
+-}
 
 testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
 testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p") 
---testFormulc = ( (Var "p" :& (Var "q" :& Var "r") ) :== ( (Var "p" :& Var "q") :& (Var "p" :& Var "r") ) )
+testFormulc = ( (Var "p" :| (Var "q" :| Var "r") ) :== ( (Var "p" :| Var "q") :| (Var "p" :| Var "r") ) )
 
+-- Deco functions!
 
 decoTree :: Formula -> [Law] -> DecoTree
 decoTree f ls = 
@@ -185,40 +188,6 @@ decoTree f ls =
 	      f1 :| f2 -> DTOr (findLaws f ls) (decoTree f1 ls) (decoTree f2 ls)
 	      f1 :== f2 -> DTEq (findLaws f ls) (decoTree f1 ls) (decoTree f2 ls)
 
-h1 :: DecoTree -> Maybe (Law, Subst)
-h1 f =
-  case f of
-       DTVar x -> Nothing
-       DTTrue  -> Nothing
-       DTFalse -> Nothing
-       DTNot l t -> (listToMaybe l) `mplus` (h1 t)
-       DTAnd l t1 t2 -> (listToMaybe l) `mplus` (h1 t1) `mplus` (h1 t2)
-       DTOr  l t1 t2 -> (listToMaybe l) `mplus` (h1 t1) `mplus` (h1 t2)
-       DTEq  l t1 t2 -> (listToMaybe l) `mplus` (h1 t1) `mplus` (h1 t2)
-
-
-h2 :: DecoTree -> DecoTree
-
-h2 f =  
-   case f of
-        DTVar x -> DTVar x
-        DTTrue  -> DTTrue
-	DTFalse -> DTFalse
-	DTNot [] t -> DTNot [] (h2 t)
-	DTNot (x:xs) t -> DTNot xs t
-	DTAnd []     t1 t2 -> DTAnd [] (h2 t1) (h2 t2) 
-	DTAnd (s:ss) t1 t2 -> DTAnd ss t1 t2
-	DTOr []     t1 t2 -> DTOr [] (h2 t1) (h2 t2)
-	DTOr (s:ss) t1 t2 -> DTOr ss t1 t2
-	DTEq []     t1 t2 -> DTEq [] (h2 t1) (h2 t2)
-	DTEq (s:ss) t1 t2 -> DTEq ss t1 t2
-
---h dt = (h1 dt, h2 dt) -- Not so fast.
-
-h dt = if (null fdt) then (Nothing, dt) else (Just (l,s), deldeco dt (l,s))
-       where fdt = concat $ flatdeco dt
-             (m,l,s) = findmin (map ( \ (l_,s_) -> (ordLaws l_, l_ , s_) )  fdt) 
-
 flatdeco f =   
    case f of
         DTVar x -> []
@@ -229,17 +198,7 @@ flatdeco f =
 	DTOr ss t1 t2  -> ss : (flatdeco t1)++(flatdeco t2)
 	DTEq ss t1 t2  -> ss : (flatdeco t1)++(flatdeco t2)
 
-deldeco dt e = -- Puede optimizarse un poco
-   case dt of
-        DTVar x -> DTVar x 
-        DTTrue  -> DTTrue
-	DTFalse -> DTFalse
-	DTNot ss t -> DTNot (delete e ss) (deldeco t e)
-	DTAnd ss t1 t2 -> DTAnd (delete e ss) (deldeco t1 e) (deldeco t2 e)
-	DTOr ss t1 t2  -> DTOr (delete e ss) (deldeco t1 e) (deldeco t2 e)
-	DTEq ss t1 t2  -> DTEq (delete e ss) (deldeco t1 e) (deldeco t2 e)
-
-findmin = foldr1 ( \ (n1, l1, s1) (n2, l2, s2) -> if (n1<n2) then (n1, l1, s1) else (n2, l2, s2))
+-- 
 
 applyl :: Formula -> (Law, Subst) -> Formula
 applyl f ((lf, rf), s) = replace lf' rf' f
@@ -249,21 +208,62 @@ applyl f ((lf, rf), s) = replace lf' rf' f
 substitute :: Formula -> Subst -> Formula
 substitute f = foldr (\(s,d) -> replace (Var s) d ) f 
 
-mkcomp_ :: DecoTree -> Formula -> [Formula]
-mkcomp_  dt f =
-         case (h dt) of
-	      (Nothing, _)  -> []
-	      (Just s, dt') -> (applyl f s):(mkcomp_ dt' f)
+-- mkcomp_ rewritted!
 
+mkcomp_ :: DecoTree -> Formula -> [Formula]
+mkcomp_ dt f = map (applyl f) $ concat $ flatdeco dt
+
+-- mkcomp : toma una fórmula y devuelve la lista de reescrituras posibles
 mkcomp :: Formula -> [Formula]
-mkcomp f = x where x = mkcomp_ (decoTree f testLaws) f
+mkcomp f = x where x = nub $ mkcomp_ (decoTree f testLaws) f
 
 interleaveCat :: [[a]] -> [a]
 interleaveCat = foldr interleave []
 
 interleaveMap :: (a -> [a]) -> [a] -> [a]
 interleaveMap f xs  = interleaveCat $ map f xs
+ 
+step :: Int -> Formula -> [Formula]
+step e f = c `mplus` interleaveMap (step e') c
+           where (c,e') = heuristica_id e f $ mkcomp f
 
-step :: Formula -> [Formula]
-step f = c `interleave` interleaveMap step c
-         where c = nub $ mkcomp f             -- Desacelera un poco el uso creciente de memoria
+heuristica_id :: HState -> Formula -> [Formula] -> ([Formula], HState)
+heuristica_id e _ fs = (fs, e)
+
+heuristica_1 :: HState -> Formula -> [Formula] -> ([Formula], HState)
+heuristica_1 e _ fs = x where x = (sortBy (\x y -> if (e<2) then compare (size y) (size x) else compare (size x) (size y)) fs, e+1)
+
+size :: Formula -> Int
+size FTrue = 0
+size FFalse = 0
+size (Var _) = 1
+size (a :& b) = max (size a) (size b) + 1
+size (a :| b) = max (size a) (size b) + 1
+size (a :== b) = max (size a) (size b) + 1
+
+-- Not used (yet)
+
+{-comparef :: Formula -> Formula -> Int
+comparef FTrue FTrue = 0
+comparef FFalse FFalse = 0
+
+comparef FTrue FFalse = 1
+comparef FFalse FTrue  = 1
+
+comparef FTrue y = size y 
+comparef FFalse y = size y
+
+comparef x FTrue = size x
+comparef x FFalse = size x
+
+comparef (Var x) (Var y) = if (x==y) then 0 else 1
+
+comparef (Var _) y = size y
+comparef x (Var _) = size x
+
+comparef (x1 :& x2) (y1 :& y2) =  (comparef x1 y1) + (comparef x2 y2)
+comparef (x1 :| x2) (y1 :| y2) =  (comparef x1 y1) + (comparef x2 y2)
+comparef (x1 :== x2) (y1 :== y2) =  (comparef x1 y1) + (comparef x2 y2)
+
+comparef x y = size x + size y
+-}
