@@ -103,10 +103,10 @@ testLaws = [
 	      (Var "a" :| (Var "b" :| Var "c"), (Var "a" :| Var "b") :| Var "c"),
 	      
 	      -- Regla dorada
-	      ((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))), -- Beware!
+	      --((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))), -- Beware!
 	      ((Var "a" :& Var "b") :==  Var "a", Var "b" :== (Var "a" :| Var "b")),
 	      ((Var "a" :& Var "b") :== (Var "a" :== Var "b"),(Var "a" :| Var "b")),  -- Beware!
-	      ((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))), -- Beware!
+	      --((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))), -- Beware!
 	      ((Var "a" :| Var "b") :==  Var "a", Var "b" :== (Var "a" :& Var "b")),
 	      ((Var "a" :| Var "b") :== (Var "a" :== Var "b"),(Var "a" :& Var "b")),  -- Beware!
 	      
@@ -122,7 +122,7 @@ testLaws = [
               --(Var "a" :& Var "b", Var "b" :& Var "a"),
 
 	   ]
-{-ordLaws x = case x of 
+ordLaws x = case x of 
                       -- Reglas que SIEMPRE conviene seleccionar primero (reducen estructura)
                       (Var "a" :== Var "a", FTrue) 	     	    -> 0
 		      (FTrue :== FFalse, FFalse)		    -> 0
@@ -169,7 +169,7 @@ testLaws = [
 		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p")-> 0  
 		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> -1
 		      
--}
+
 
 testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
 testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p") 
@@ -210,12 +210,11 @@ substitute f = foldr (\(s,d) -> replace (Var s) d ) f
 
 -- mkcomp_ rewritted!
 
-mkcomp_ :: DecoTree -> Formula -> [Formula]
-mkcomp_ dt f = map (applyl f) $ concat $ flatdeco dt
+type SComps = [(Law,Subst)]
 
--- mkcomp : toma una fórmula y devuelve la lista de reescrituras posibles
-mkcomp :: Formula -> [Formula]
-mkcomp f = x where x = nub $ mkcomp_ (decoTree f testLaws) f
+-- mkcomp : toma una fórmula y devuelve la lista de computaciones suspendidas de las reescrituras posibles
+mkcomp :: Formula -> SComps 
+mkcomp f = nub $ concat $ flatdeco $ decoTree f testLaws
 
 interleaveCat :: [[a]] -> [a]
 interleaveCat = foldr interleave []
@@ -225,17 +224,29 @@ interleaveMap f xs  = interleaveCat $ map f xs
  
 step :: Int -> Formula -> [Formula]
 step e f = c `mplus` interleaveMap (step e') c
-           where (c,e') = heuristica_0 e f $ mkcomp f
+           where (c,e') = heuristica e f $ mkcomp f
 
-heuristica_id :: HState -> Formula -> [Formula] -> ([Formula], HState)
-heuristica_id e _ fs = (fs, e)
+heuristica_id :: HState -> Formula -> SComps -> ([Formula], HState)
+heuristica_id e f fs = (mapplyl fs, e)
+                       where mapplyl = map (applyl f) -- Force the suspended computations
 
+heuristica :: HState -> Formula -> SComps -> ([Formula], HState) -- La heurística fuera las computaciones cuando lo necesite
+heuristica e f fs = ( fs'', e)  
+                    where fs' = sortBy (\x y-> compare (ordLaws (fst x)) (ordLaws (fst y))) fs -- Better rule
+		          fs'' = sortBy (\x y -> compare (size x) (size y)) $ map (applyl f) fs' -- Most reduced branch
+			  
+			  
+{-
 heuristica_0 :: HState -> Formula -> [Formula] -> ([Formula], HState)
 heuristica_0 e _ fs = ((sortBy (\x y -> compare (size x) (size y)) xs)++ys, e)  
                       where (xs,ys) = partition (\f -> size f <= 2) fs
 
 heuristica_1 :: HState -> Formula -> [Formula] -> ([Formula], HState)
 heuristica_1 e _ fs = x where x = (sortBy (\x y -> if (e<5) then compare (size y) (size x) else compare (size x) (size y)) fs, e+1)
+
+heuristica_2 :: HState -> Formula -> [Formula] -> ([Formula], HState)
+heuristica_2 e f fs = x where x = (sortBy (\x y -> compare (comparef f x) (comparef f x)) fs, e)
+-}
 
 size :: Formula -> Int
 size FTrue = 0
@@ -247,7 +258,7 @@ size (a :== b) = max (size a) (size b) + 1
 
 -- Not used (yet)
 
-{-comparef :: Formula -> Formula -> Int
+comparef :: Formula -> Formula -> Int
 comparef FTrue FTrue = 0
 comparef FFalse FFalse = 0
 
@@ -270,4 +281,3 @@ comparef (x1 :| x2) (y1 :| y2) =  (comparef x1 y1) + (comparef x2 y2)
 comparef (x1 :== x2) (y1 :== y2) =  (comparef x1 y1) + (comparef x2 y2)
 
 comparef x y = size x + size y
--}
