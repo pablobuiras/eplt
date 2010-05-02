@@ -32,5 +32,5 @@ repl = forever $
                                   mapM_ (putStr . show) (M.toList v)
                                   putStr "\n"
                               Tauto -> do putStr "Formula is a tautology. Proving..."
-			                  putStr $ show (length $ takeWhile (/=FTrue) $ step 1 f) ++ " step(s) \nTrue!\n"
+			                  putStr $ show (length $ takeWhile (/=FTrue) $ step3 [[f]] []) ++ " step(s) \nTrue!\n"
 	    --either print print . parse formula "<interactive>" l  -- use readline later

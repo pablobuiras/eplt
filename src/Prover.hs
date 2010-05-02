@@ -103,12 +103,12 @@ testLaws = [
 	      (Var "a" :| (Var "b" :| Var "c"), (Var "a" :| Var "b") :| Var "c"),
 	      
 	      -- Regla dorada
-	      --((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))), -- Beware!
+	      ((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))), -- Beware!
 	      ((Var "a" :& Var "b") :==  Var "a", Var "b" :== (Var "a" :| Var "b")),
-	      ((Var "a" :& Var "b") :== (Var "a" :== Var "b"),(Var "a" :| Var "b")),  -- Beware!
-	      --((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))), -- Beware!
+	      ((Var "a" :& Var "b") :== (Var "a" :== Var "b"),(Var "a" :| Var "b")),  
+	      ((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))), -- Beware!
 	      ((Var "a" :| Var "b") :==  Var "a", Var "b" :== (Var "a" :& Var "b")),
-	      ((Var "a" :| Var "b") :== (Var "a" :== Var "b"),(Var "a" :& Var "b")),  -- Beware!
+	      ((Var "a" :| Var "b") :== (Var "a" :== Var "b"),(Var "a" :& Var "b")), 
 	      
 	      -- Distributividad 
 	      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")),	      
@@ -138,10 +138,10 @@ ordLaws x = case x of
 		      
 		      -- Reglas que conviene aplicar en 2do lugar
 		      -- Golden rule
-		      ((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))) -> 1
+		      ((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))) -> 10
 		      ((Var "a" :& Var "b") :==  Var "a", Var "b" :== (Var "a" :| Var "b")) -> 1
 		      ((Var "a" :& Var "b") :== (Var "a" :== Var "b"),(Var "a" :| Var "b")) -> 1
-		      ((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))) -> 1
+		      ((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))) -> 10
 		      ((Var "a" :| Var "b") :==  Var "a", Var "b" :== (Var "a" :& Var "b")) -> 1
 		      ((Var "a" :| Var "b") :== (Var "a" :== Var "b"),(Var "a" :& Var "b")) -> 1
 		      
@@ -166,14 +166,15 @@ ordLaws x = case x of
 		      
 		      
 		      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p") -> 1
-		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p")-> 0  
-		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> -1
+		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p")-> 1  
+		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> 1
 		      
 
 
 testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
 testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p") 
 testFormulc = ( (Var "p" :| (Var "q" :| Var "r") ) :== ( (Var "p" :| Var "q") :| (Var "p" :| Var "r") ) )
+testFormuld = ( (Var "p" :& Var "q") :== (Var "p" :| Var "q") :& Var "p" :& Var "q" ) 
 
 -- Deco functions!
 
@@ -214,17 +215,34 @@ type SComps = [(Law,Subst)]
 
 -- mkcomp : toma una fórmula y devuelve la lista de computaciones suspendidas de las reescrituras posibles
 mkcomp :: Formula -> SComps 
-mkcomp f = nub $ concat $ flatdeco $ decoTree f testLaws
+mkcomp f = concat $ flatdeco $ decoTree f testLaws
 
 interleaveCat :: [[a]] -> [a]
 interleaveCat = foldr interleave []
 
 interleaveMap :: (a -> [a]) -> [a] -> [a]
 interleaveMap f xs  = interleaveCat $ map f xs
+
+{-
+step2 :: Int -> [Formula] -> Formula -> [Formula] 
+step2 e ac f = a ++ (concat (map (step2 e' (a++ac)) a))
+               where (c,e') = heuristica e f (mkcomp f)
+	             a = filter (\ x -> not (elem x ac)) $ nub c
+-}				 
  
-step :: Int -> Formula -> [Formula]
-step e f = c `mplus` interleaveMap (step e') c
-           where (c,e') = heuristica e f $ mkcomp f
+-- Just testing... 
+ 
+step3 :: [[Formula]] -> [Formula] -> [Formula]
+step3 []           acc = []
+step3 ([]:fss)     acc = step3 fss acc
+step3 ((f:fs):fss) acc = nfs ++ (step3 (fss++[fs,nfs]) (nfs++acc))
+                            where (fs',_) = heuristica 1 f (mkcomp f)
+			          nfs = filter (\ x -> not (elem x acc)) $ nub fs'
+
+--step :: Int -> Formula -> [Formula]
+--step e ac f = a `mplus` interleaveMap (step e' (a++ac)) a
+--            where (c,e') = heuristica_id e f (mkcomp f)
+--		  a = filter (\ x -> not (elem x ac)) $ nub c 
 
 heuristica_id :: HState -> Formula -> SComps -> ([Formula], HState)
 heuristica_id e f fs = (mapplyl fs, e)
@@ -233,17 +251,23 @@ heuristica_id e f fs = (mapplyl fs, e)
 heuristica :: HState -> Formula -> SComps -> ([Formula], HState) -- La heurística fuera las computaciones cuando lo necesite
 heuristica e f fs = ( fs'', e)  
                     where fs' = sortBy (\x y-> compare (ordLaws (fst x)) (ordLaws (fst y))) fs -- Better rule
-		          fs'' = sortBy (\x y -> compare (size x) (size y)) $ map (applyl f) fs' -- Most reduced branch
-			  
+		          fs'' = sortBy (\x y -> compare (size x) (size y)) $  map (applyl f) fs' -- Most reduced branch
+
+
+t y =  sum $ map (size.snd) $ snd y
+
 			  
 {-
 heuristica_0 :: HState -> Formula -> [Formula] -> ([Formula], HState)
 heuristica_0 e _ fs = ((sortBy (\x y -> compare (size x) (size y)) xs)++ys, e)  
                       where (xs,ys) = partition (\f -> size f <= 2) fs
+-}
 
-heuristica_1 :: HState -> Formula -> [Formula] -> ([Formula], HState)
-heuristica_1 e _ fs = x where x = (sortBy (\x y -> if (e<5) then compare (size y) (size x) else compare (size x) (size y)) fs, e+1)
-
+heuristica_1 :: HState -> Formula -> SComps -> ([Formula], HState)
+heuristica_1 e f fs = (fs'', e+1)
+		      where fs' = map (applyl f) fs
+		            fs'' = (sortBy (\x y -> if (e<5) then compare (size y) (size x) else compare (size x) (size y)) fs')
+{-
 heuristica_2 :: HState -> Formula -> [Formula] -> ([Formula], HState)
 heuristica_2 e f fs = x where x = (sortBy (\x y -> compare (comparef f x) (comparef f x)) fs, e)
 -}
