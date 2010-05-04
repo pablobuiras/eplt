@@ -7,6 +7,7 @@ import Data.Monoid
 import Data.Maybe
 import Data.List
 import Control.Monad.Logic.Class
+import Control.Monad.Logic
 import Debug.Trace
 
 type Law = (Formula, Formula)
@@ -201,6 +202,20 @@ flatdeco f =
 
 -- 
 
+-- Deco Fusion
+enumLaws :: (Functor m, MonadPlus m) => [Law] -> Formula -> m (Law, Subst)
+enumLaws ls f =
+    case f of
+      Var x -> mzero
+      FTrue -> mzero
+      FFalse -> mzero
+      Not f -> findLaws f ls `mplus` enumLaws ls f
+      f1 :& f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+      f1 :| f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+      f1 :== f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+
+--
+
 applyl :: Formula -> (Law, Subst) -> Formula
 applyl f ((lf, rf), s) = replace lf' rf' f
                          where lf' = substitute lf s
@@ -215,7 +230,8 @@ type SComps = [(Law,Subst)]
 
 -- mkcomp : toma una fórmula y devuelve la lista de computaciones suspendidas de las reescrituras posibles
 mkcomp :: Formula -> SComps 
-mkcomp f = concat $ flatdeco $ decoTree f testLaws
+--mkcomp f = concat $ flatdeco $ decoTree f testLaws
+mkcomp = observeAll . enumLaws testLaws -- faster!
 
 interleaveCat :: [[a]] -> [a]
 interleaveCat = foldr interleave []
@@ -279,6 +295,7 @@ size (Var _) = 1
 size (a :& b) = max (size a) (size b) + 1
 size (a :| b) = max (size a) (size b) + 1
 size (a :== b) = max (size a) (size b) + 1
+size (Not f) = size f + 1
 
 -- Not used (yet)
 
