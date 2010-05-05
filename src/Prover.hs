@@ -230,7 +230,6 @@ type SComps = [(Law,Subst)]
 
 -- mkcomp : toma una fórmula y devuelve la lista de computaciones suspendidas de las reescrituras posibles
 mkcomp :: Formula -> SComps 
---mkcomp f = concat $ flatdeco $ decoTree f testLaws
 mkcomp = observeAll . enumLaws testLaws -- faster!
 
 interleaveCat :: [[a]] -> [a]
@@ -239,31 +238,20 @@ interleaveCat = foldr interleave []
 interleaveMap :: (a -> [a]) -> [a] -> [a]
 interleaveMap f xs  = interleaveCat $ map f xs
 
-{-
-step2 :: Int -> [Formula] -> Formula -> [Formula] 
-step2 e ac f = a ++ (concat (map (step2 e' (a++ac)) a))
-               where (c,e') = heuristica e f (mkcomp f)
-	             a = filter (\ x -> not (elem x ac)) $ nub c
--}				 
- 
+
 -- Just testing... 
  
-step3 :: [[Formula]] -> [Formula] -> [Formula]
-step3 []           acc = []
-step3 ([]:fss)     acc = step3 fss acc
-step3 ((f:fs):fss) acc = nfs ++ (step3 (fss++[fs,nfs]) (nfs++acc))
-                            where (fs',_) = heuristica 1 f (mkcomp f)
+step :: [[Formula]] -> [Formula] -> HState -> [Formula]
+step []           acc e = []
+step ([]:fss)     acc e = step fss acc e
+step ((f:fs):fss) acc e = nfs ++ (step (fss++[fs,nfs]) (nfs++acc) e')
+                            where (fs',e') = heuristica_2 e f (mkcomp f)
 			          nfs = filter (\ x -> not (elem x acc)) $ nub fs'
-
---step :: Int -> Formula -> [Formula]
---step e ac f = a `mplus` interleaveMap (step e' (a++ac)) a
---            where (c,e') = heuristica_id e f (mkcomp f)
---		  a = filter (\ x -> not (elem x ac)) $ nub c 
 
 heuristica_id :: HState -> Formula -> SComps -> ([Formula], HState)
 heuristica_id e f fs = (mapplyl fs, e)
                        where mapplyl = map (applyl f) -- Force the suspended computations
-
+{-
 heuristica :: HState -> Formula -> SComps -> ([Formula], HState) -- La heurística fuera las computaciones cuando lo necesite
 heuristica e f fs = ( fs'', e)  
                     where fs' = sortBy (\x y-> compare (ordLaws (fst x)) (ordLaws (fst y))) fs -- Better rule
@@ -271,22 +259,19 @@ heuristica e f fs = ( fs'', e)
 
 
 t y =  sum $ map (size.snd) $ snd y
-
-			  
-{-
-heuristica_0 :: HState -> Formula -> [Formula] -> ([Formula], HState)
-heuristica_0 e _ fs = ((sortBy (\x y -> compare (size x) (size y)) xs)++ys, e)  
-                      where (xs,ys) = partition (\f -> size f <= 2) fs
 -}
+
 
 heuristica_1 :: HState -> Formula -> SComps -> ([Formula], HState)
 heuristica_1 e f fs = (fs'', e+1)
 		      where fs' = map (applyl f) fs
 		            fs'' = (sortBy (\x y -> if (e<5) then compare (size y) (size x) else compare (size x) (size y)) fs')
-{-
-heuristica_2 :: HState -> Formula -> [Formula] -> ([Formula], HState)
-heuristica_2 e f fs = x where x = (sortBy (\x y -> compare (comparef f x) (comparef f x)) fs, e)
--}
+
+heuristica_2 :: HState -> Formula -> SComps -> ([Formula], HState) -- "Magic" heuristic
+heuristica_2 e f fs = (fs''', 1)
+		      where fs' = if (e>0) then filter (\x -> (ordLaws (fst x)) < 10) fs else fs
+		            fs'' = map (applyl f) fs'
+ 			    fs''' = (sortBy (\x y -> compare (size x) (size y)) fs'')
 
 size :: Formula -> Int
 size FTrue = 0
