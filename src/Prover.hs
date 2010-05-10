@@ -53,7 +53,7 @@ unify ((x,y):xs) | (ls == [] || ls == [y]) = fmap ((x,y):) (unify xs)
       		 | otherwise = mzero
     where ls = nub [b | (a,b) <- xs, a == x]
 
-findLaws :: (Functor m, MonadPlus m) => Formula -> [Law] -> m (Law, Subst)
+findLaws :: (Functor m, MonadPlus m) => Formula -> LawBank -> m (Law, Subst)
 findLaws f = foldr findLaw mzero
     where findLaw l m = matcher l f `mplus` m
           matcher l@(lhs,_) f = fmap (\s -> (l,s)) (match lhs f >>= unify)
@@ -177,33 +177,9 @@ testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p")
 testFormulc = ( (Var "p" :| (Var "q" :| Var "r") ) :== ( (Var "p" :| Var "q") :| (Var "p" :| Var "r") ) )
 testFormuld = ( (Var "p" :& Var "q") :== (Var "p" :| Var "q") :& Var "p" :& Var "q" ) 
 
--- Deco functions!
-
-decoTree :: Formula -> [Law] -> DecoTree
-decoTree f ls = 
-	 case f of
-	      Var x -> DTVar x
-	      FTrue -> DTTrue
-	      FFalse -> DTFalse
-	      Not f -> DTNot (findLaws f ls) (decoTree f ls)
-	      f1 :& f2 -> DTAnd (findLaws f ls) (decoTree f1 ls) (decoTree f2 ls)
-	      f1 :| f2 -> DTOr (findLaws f ls) (decoTree f1 ls) (decoTree f2 ls)
-	      f1 :== f2 -> DTEq (findLaws f ls) (decoTree f1 ls) (decoTree f2 ls)
-
-flatdeco f =   
-   case f of
-        DTVar x -> []
-        DTTrue  -> []
-	DTFalse -> []
-	DTNot ss t -> ss:(flatdeco t)
-	DTAnd ss t1 t2 -> ss : (flatdeco t1)++(flatdeco t2)
-	DTOr ss t1 t2  -> ss : (flatdeco t1)++(flatdeco t2)
-	DTEq ss t1 t2  -> ss : (flatdeco t1)++(flatdeco t2)
-
--- 
 
 -- Deco Fusion
-enumLaws :: (Functor m, MonadPlus m) => [Law] -> Formula -> m (Law, Subst)
+enumLaws :: (Functor m, MonadPlus m) => LawBank -> Formula -> m (Law, Subst)
 enumLaws ls f =
     case f of
       Var x -> mzero
@@ -226,11 +202,61 @@ substitute f = foldr (\(s,d) -> replace (Var s) d ) f
 
 -- mkcomp_ rewritted!
 
-type SComps = [(Law,Subst)]
+type SComp = (Law,Subst)
+type SComps = [SComp]
+data ProverStatus = Status { formula :: Formula, lawbank :: LawBank, heuristics :: Heuristics, expanded :: Int } -- deriving Show
+type Heuristics = ( ProverStatus -> LawBank, ProverStatus -> [(SComp,Formula)] -> [(SComp,Formula)])
 
--- mkcomp : toma una fórmula y devuelve la lista de computaciones suspendidas de las reescrituras posibles
-mkcomp :: Formula -> SComps 
-mkcomp = observeAll . enumLaws testLaws -- faster!
+-- to Law.hs ->
+type LawBank = [Law] -- temporal
+-- 
+
+-- mkcomp : devuelve la lista de computaciones suspendidas de las reescrituras posibles
+mkcomp :: ProverStatus -> SComps 
+mkcomp ps = observeAll $ enumLaws (lawbank ps) (formula ps) -- faster!
+
+h_id_1 :: ProverStatus -> LawBank
+h_id_1 ps = lawbank ps
+
+h_id_2 :: ProverStatus -> [(SComp,Formula)] -> [(SComp,Formula)]
+h_id_2 _ ls = ls
+
+h_id :: Heuristics
+h_id = (h_id_1, h_id_2)
+
+h_stable_1 :: ProverStatus -> LawBank
+h_stable_1 ps = lawbank ps
+
+h_stable_2 :: ProverStatus -> [(SComp,Formula)] -> [(SComp,Formula)]
+h_stable_2 _ cs = sortBy ( \ (_,x) (_,y) -> compare (size x) (size y)) cs
+
+h_stable :: Heuristics
+h_stable = (h_stable_1, h_stable_2)
+
+
+h_experimental_1 :: ProverStatus -> LawBank
+h_experimental_1 (Status {expanded = n, lawbank = lb}) = if (n==0) then lb else []
+
+h_experimental_2 :: ProverStatus -> [(SComp,Formula)] -> [(SComp,Formula)]
+h_experimental_2 _ cs = sortBy ( \ (_,x) (_,y) -> compare (size x) (size y)) cs
+
+h_experimental :: Heuristics
+h_experimental = (h_experimental_1, h_experimental_2)
+
+
+chgLawBank :: ProverStatus -> LawBank -> ProverStatus
+chgLawBank ps new_lawbank = Status { formula = formula ps, lawbank = new_lawbank, heuristics = heuristics ps , expanded = expanded ps }
+
+chgFormula :: ProverStatus -> Formula -> ProverStatus
+chgFormula ps new_formula = Status { formula = new_formula, lawbank = lawbank ps, heuristics = heuristics ps, expanded = expanded ps }
+
+
+inc :: ProverStatus -> ProverStatus
+inc ps  = Status { formula = formula ps, lawbank = lawbank ps, heuristics = heuristics ps, expanded = expanded ps + 1 }
+
+
+
+{-
 
 interleaveCat :: [[a]] -> [a]
 interleaveCat = foldr interleave []
@@ -251,7 +277,7 @@ step ((f:fs):fss) acc e = nfs ++ (step (fss++[fs,nfs]) (nfs++acc) e')
 heuristica_id :: HState -> Formula -> SComps -> ([Formula], HState)
 heuristica_id e f fs = (mapplyl fs, e)
                        where mapplyl = map (applyl f) -- Force the suspended computations
-{-
+
 heuristica :: HState -> Formula -> SComps -> ([Formula], HState) -- La heurística fuera las computaciones cuando lo necesite
 heuristica e f fs = ( fs'', e)  
                     where fs' = sortBy (\x y-> compare (ordLaws (fst x)) (ordLaws (fst y))) fs -- Better rule
@@ -259,7 +285,7 @@ heuristica e f fs = ( fs'', e)
 
 
 t y =  sum $ map (size.snd) $ snd y
--}
+
 
 
 heuristica_1 :: HState -> Formula -> SComps -> ([Formula], HState)
@@ -272,6 +298,7 @@ heuristica_2 e f fs = (fs''', 1)
 		      where fs' = if (e>0) then filter (\x -> (ordLaws (fst x)) < 10) fs else fs
 		            fs'' = map (applyl f) fs'
  			    fs''' = (sortBy (\x y -> compare (size x) (size y)) fs'')
+-}
 
 size :: Formula -> Int
 size FTrue = 0
@@ -281,29 +308,3 @@ size (a :& b) = max (size a) (size b) + 1
 size (a :| b) = max (size a) (size b) + 1
 size (a :== b) = max (size a) (size b) + 1
 size (Not f) = size f + 1
-
--- Not used (yet)
-
-comparef :: Formula -> Formula -> Int
-comparef FTrue FTrue = 0
-comparef FFalse FFalse = 0
-
-comparef FTrue FFalse = 1
-comparef FFalse FTrue  = 1
-
-comparef FTrue y = size y 
-comparef FFalse y = size y
-
-comparef x FTrue = size x
-comparef x FFalse = size x
-
-comparef (Var x) (Var y) = if (x==y) then 0 else 1
-
-comparef (Var _) y = size y
-comparef x (Var _) = size x
-
-comparef (x1 :& x2) (y1 :& y2) =  (comparef x1 y1) + (comparef x2 y2)
-comparef (x1 :| x2) (y1 :| y2) =  (comparef x1 y1) + (comparef x2 y2)
-comparef (x1 :== x2) (y1 :== y2) =  (comparef x1 y1) + (comparef x2 y2)
-
-comparef x y = size x + size y
