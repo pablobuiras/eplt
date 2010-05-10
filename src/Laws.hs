@@ -1,3 +1,10 @@
+module Laws where
+
+import Formula
+type Law = (Formula, Formula)
+
+
+{-
 ordLaws x = case x of 
                       -- Reglas que SIEMPRE conviene seleccionar primero (reducen estructura)
                       (Var "a" :== Var "a", FTrue) 	     	    -> 0
@@ -46,3 +53,4 @@ ordLaws x = case x of
 		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> 0
 		      
 
+-}

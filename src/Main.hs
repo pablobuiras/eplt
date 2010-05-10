@@ -1,6 +1,6 @@
 module Main where
 
-import Prover
+import Prover hiding (formula)
 import Formula
 import Formula.Parser (formula)
 import Formula.Pretty
@@ -11,16 +11,13 @@ import System.IO
 import Control.Monad
 import ModelBuilder
 
-pf lf = rights $ map (parse formula "<interactive>") lf
-parseformula f = head $ pf [f]
-
 main :: IO ()
 main = do hSetBuffering stdout NoBuffering
           repl
 
 repl :: IO ()
 repl = forever $
-         do putStr "> "
+         do putStr "> "                   
 	    l <- getLine
             when (null l) repl
             case parse formula "<interactive>" l of
@@ -31,9 +28,8 @@ repl = forever $
                                do putStr "Formula is not a tautology. Counterexample: "
                                   mapM_ (putStr . show) (M.toList v)
                                   putStr "\n"
-                              Tauto -> do putStr "Formula is a tautology. Proving..."
-			                  putStr $ show b ++ " in " ++ show l ++ " step(s) \n"
-					    where s = step [[f]] [] 0
-					          l =  length $ takeWhile (/=FTrue) s
-						  b  = elem FTrue s
+                              Tauto -> do putStrLn "Formula is a tautology. Proving..."
+                                          case prove f of
+                                            (_,p) -> print p
+
 	    --either print print . parse formula "<interactive>" l  -- use readline later

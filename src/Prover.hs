@@ -8,15 +8,14 @@ import Data.Maybe
 import Data.List
 import Control.Monad.Logic.Class
 import Control.Monad.Logic
+import Control.Monad.Writer
+import Control.Monad.State
 import Debug.Trace
-
-type Law = (Formula, Formula)
+import Laws
+import Subst
+import Proof
 
 type HState = Int
-
-type Subst = [(String, Formula)]
-(|->) :: String -> Formula -> Subst
-v |-> f = [(v,f)]
 
 match :: (MonadPlus mp) => Formula -> Formula -> mp Subst
 match (Var p) f = return (p |-> f)
@@ -200,8 +199,6 @@ applyl f ((lf, rf), s) = replace lf' rf' f
 substitute :: Formula -> Subst -> Formula
 substitute f = foldr (\(s,d) -> replace (Var s) d ) f 
 
--- mkcomp_ rewritted!
-
 type SComp = (Law,Subst)
 type SComps = [SComp]
 data ProverStatus = Status { formula :: Formula, lawbank :: LawBank, heuristics :: Heuristics, expanded :: Int } -- deriving Show
@@ -212,8 +209,39 @@ type LawBank = [Law] -- temporal
 -- 
 
 -- mkcomp : devuelve la lista de computaciones suspendidas de las reescrituras posibles
-mkcomp :: ProverStatus -> SComps 
-mkcomp ps = observeAll $ enumLaws (lawbank ps) (formula ps) -- faster!
+mkcomp :: Formula -> Prover SComp
+mkcomp f = do s <- get
+              enumLaws (lawbank s) f
+
+type Prover a = StateT ProverStatus (WriterT Proof Logic) a
+type Answer = Prover Formula
+
+runProver :: ProverStatus -> Prover a -> [((a,ProverStatus), Proof)]
+runProver initState p = observeAll $ runWriterT $ runStateT p initState
+
+mstep :: Formula -> Answer
+mstep f = do  (l,s) <- mkcomp f
+              tell $ proofstep f l s
+              return $ applyl f (l,s)
+
+estep :: Answer -> Answer
+estep a = do x <- a
+             y <- mstep x
+             return y
+
+allit :: Answer -> Answer
+allit a = x `mplus` (allit x) where x = estep a
+
+prove :: Formula -> (Formula, Proof)
+prove f = forgetSt . head . runProver st $ toplevel f
+          where st = Status { formula = f,
+                              lawbank = testLaws,
+                              heuristics = h_id,
+                              expanded = 0 }
+                forgetSt ((x,_),y) = (x,y)
+                toplevel f = once $ do f' <- allit (return f)
+                                       guard (f' == FTrue)
+                                       return f'
 
 h_id_1 :: ProverStatus -> LawBank
 h_id_1 ps = lawbank ps
@@ -233,7 +261,7 @@ h_stable_2 _ cs = sortBy ( \ (_,x) (_,y) -> compare (size x) (size y)) cs
 h_stable :: Heuristics
 h_stable = (h_stable_1, h_stable_2)
 
-
+ 
 h_experimental_1 :: ProverStatus -> LawBank
 h_experimental_1 (Status {expanded = n, lawbank = lb}) = if (n==0) then lb else []
 
