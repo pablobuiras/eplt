@@ -10,6 +10,7 @@ import Control.Monad.Logic.Class
 import Control.Monad.Logic
 import Control.Monad.Writer
 import Control.Monad.State
+import Control.Monad.Reader
 import Debug.Trace
 import Laws
 import Subst
@@ -178,16 +179,15 @@ testFormuld = ( (Var "p" :& Var "q") :== (Var "p" :| Var "q") :& Var "p" :& Var 
 
 
 -- Deco Fusion
-enumLaws :: (Functor m, MonadPlus m) => LawBank -> Formula -> m (Law, Subst)
-enumLaws ls f =
-    case f of
-      Var x -> mzero
-      FTrue -> mzero
-      FFalse -> mzero
-      Not f -> findLaws f ls `mplus` enumLaws ls f
-      f1 :& f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
-      f1 :| f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
-      f1 :== f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+enumLaws :: LawBank -> Formula -> Prover (Law, Subst)
+enumLaws ls f = case f of
+                  Var x -> mzero
+                  FTrue -> mzero
+                  FFalse -> mzero
+                  Not f -> findLaws f ls `mplus` enumLaws ls f
+                  f1 :& f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+                  f1 :| f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+                  f1 :== f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
 
 --
 
@@ -201,8 +201,11 @@ substitute f = foldr (\(s,d) -> replace (Var s) d ) f
 
 type SComp = (Law,Subst)
 type SComps = [SComp]
-data ProverStatus = Status { formula :: Formula, lawbank :: LawBank, heuristics :: Heuristics, expanded :: Int } -- deriving Show
-type Heuristics = ( ProverStatus -> LawBank, ProverStatus -> [(SComp,Formula)] -> [(SComp,Formula)])
+data ProverState = PS { expanded :: Int, visited :: [Formula] }
+type Heuristics = ( ProverState -> LawBank, ProverState -> [(SComp,Formula)] -> [(SComp,Formula)])
+
+instance Show ProverState where
+    show (PS { expanded = n, visited = vs }) = "Search depth: " ++ show n ++ ", repeated nodes: " ++ show (length vs)
 
 -- to Law.hs ->
 type LawBank = [Law] -- temporal
@@ -210,79 +213,71 @@ type LawBank = [Law] -- temporal
 
 -- mkcomp : devuelve la lista de computaciones suspendidas de las reescrituras posibles
 mkcomp :: Formula -> Prover SComp
-mkcomp f = do s <- get
-              enumLaws (lawbank s) f
+mkcomp f = ask >>= \lb -> inc >> enumLaws lb f
 
-type Prover a = StateT ProverStatus (WriterT Proof Logic) a
+type Prover a = ReaderT LawBank (WriterT Proof (LogicT (State ProverState))) a
 type Answer = Prover Formula
 
-runProver :: ProverStatus -> Prover a -> [((a,ProverStatus), Proof)]
-runProver initState p = observeAll $ runWriterT $ runStateT p initState
+runProver :: ProverState -> LawBank -> Prover a -> ([(a,Proof)],ProverState)
+runProver initState lb = flip runState initState . observeAllT . runWriterT . (flip runReaderT lb)
 
 mstep :: Formula -> Answer
-mstep f = do  (l,s) <- mkcomp f
-              tell $ proofstep f l s
-              return $ applyl f (l,s)
+mstep f = do (l,s) <- mkcomp f
+             tell $ proofstep f l s
+             return (applyl f (l,s))
 
 estep :: Answer -> Answer
 estep a = do x <- a
+             vs <- fmap visited get
+             guard (not (x `elem` vs))
              y <- mstep x
              return y
 
 allit :: Answer -> Answer
 allit a = x `mplus` (allit x) where x = estep a
 
-prove :: Formula -> (Formula, Proof)
-prove f = forgetSt . head . runProver st $ toplevel f
-          where st = Status { formula = f,
-                              lawbank = testLaws,
-                              heuristics = h_id,
-                              expanded = 0 }
-                forgetSt ((x,_),y) = (x,y)
+pair :: (a -> c) -> (b -> d) -> (a,b) -> (c,d)
+pair f g ~(x,y) = (f x, g y)
+
+prove :: Formula -> (Proof, ProverState)
+prove f = pair (snd . head) id $ runProver st testLaws $ toplevel f
+          where st = PS { expanded = 0, visited = [] }
                 toplevel f = once $ do f' <- allit (return f)
                                        guard (f' == FTrue)
                                        return f'
 
-h_id_1 :: ProverStatus -> LawBank
+inc = modify (\ps -> ps { expanded = expanded ps + 1 })
+
+{-
+h_id_1 :: ProverState -> LawBank
 h_id_1 ps = lawbank ps
 
-h_id_2 :: ProverStatus -> [(SComp,Formula)] -> [(SComp,Formula)]
+h_id_2 :: ProverState -> [(SComp,Formula)] -> [(SComp,Formula)]
 h_id_2 _ ls = ls
 
 h_id :: Heuristics
 h_id = (h_id_1, h_id_2)
 
-h_stable_1 :: ProverStatus -> LawBank
+h_stable_1 :: ProverState -> LawBank
 h_stable_1 ps = lawbank ps
 
-h_stable_2 :: ProverStatus -> [(SComp,Formula)] -> [(SComp,Formula)]
+h_stable_2 :: ProverState -> [(SComp,Formula)] -> [(SComp,Formula)]
 h_stable_2 _ cs = sortBy ( \ (_,x) (_,y) -> compare (size x) (size y)) cs
 
 h_stable :: Heuristics
 h_stable = (h_stable_1, h_stable_2)
 
  
-h_experimental_1 :: ProverStatus -> LawBank
+h_experimental_1 :: ProverState -> LawBank
 h_experimental_1 (Status {expanded = n, lawbank = lb}) = if (n==0) then lb else []
 
-h_experimental_2 :: ProverStatus -> [(SComp,Formula)] -> [(SComp,Formula)]
+h_experimental_2 :: ProverState -> [(SComp,Formula)] -> [(SComp,Formula)]
 h_experimental_2 _ cs = sortBy ( \ (_,x) (_,y) -> compare (size x) (size y)) cs
 
 h_experimental :: Heuristics
 h_experimental = (h_experimental_1, h_experimental_2)
 
-
-chgLawBank :: ProverStatus -> LawBank -> ProverStatus
-chgLawBank ps new_lawbank = Status { formula = formula ps, lawbank = new_lawbank, heuristics = heuristics ps , expanded = expanded ps }
-
-chgFormula :: ProverStatus -> Formula -> ProverStatus
-chgFormula ps new_formula = Status { formula = new_formula, lawbank = lawbank ps, heuristics = heuristics ps, expanded = expanded ps }
-
-
-inc :: ProverStatus -> ProverStatus
-inc ps  = Status { formula = formula ps, lawbank = lawbank ps, heuristics = heuristics ps, expanded = expanded ps + 1 }
-
-
+-}
 
 {-
 

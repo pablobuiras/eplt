@@ -8,7 +8,7 @@ import Laws
 import Subst
 import Data.List
 
-data Proof = Proof { formulae :: [Formula], laws :: [Law], substs :: [Subst] }
+data Proof = Proof { formulae :: [Formula], laws :: [Law], substs :: [Subst] } deriving Show
 
 instance Monoid Proof where
   mempty = Proof { formulae = mempty, laws = mempty, substs = mempty }
@@ -20,10 +20,11 @@ instance Monoid Proof where
 proofstep :: Formula -> Law -> Subst -> Proof
 proofstep f l s = Proof { formulae = return f, laws = return l, substs = return s }
 
-
+{-
 instance Show Proof where
     show (Proof { formulae = fs, laws = ls, substs = ss }) =
         (map showFormula fs `interleaveStr` map showLaw ls) ++ "true"
             where showFormula f = show f
                   showLaw (lhs,rhs) = "= { " ++ show lhs ++ " = " ++ show rhs ++ " }"
                   interleaveStr xs ys = concatMap (\(x,y) -> x ++ '\n':y ++ "\n") $ zip xs ys
+-}

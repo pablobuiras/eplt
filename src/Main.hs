@@ -1,6 +1,6 @@
 module Main where
 
-import Prover hiding (formula)
+import Prover
 import Formula
 import Formula.Parser (formula)
 import Formula.Pretty
@@ -30,6 +30,6 @@ repl = forever $
                                   putStr "\n"
                               Tauto -> do putStrLn "Formula is a tautology. Proving..."
                                           case prove f of
-                                            (_,p) -> print p
+                                            (p,st) -> print p >> print st
 
 	    --either print print . parse formula "<interactive>" l  -- use readline later
