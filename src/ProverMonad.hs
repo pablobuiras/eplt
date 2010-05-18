@@ -43,4 +43,8 @@ instance MonadProver Prover Deriv where
                       modify (\r -> r { visited = goal d : visited r})
   	              return d)
   getLawBank = P $ ask
-  applyAll f m = undefined
+  applyAll f m = P $ do lb <- ask
+                        st <- get
+                        let (as, s') = runProver st lb m
+                        let as' = f as
+                        msum $ map return as'
