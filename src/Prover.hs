@@ -15,7 +15,7 @@ import Laws
 import Subst
 import Deriv
 
-type Heuristics = ( ProverState -> LawBank, ProverState -> [(SComp,Formula)] -> [(SComp,Formula)])
+
 
 enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
 enumLaws ls f = case f of
@@ -29,8 +29,11 @@ enumLaws ls f = case f of
 
 expand :: Deriv -> Prover Deriv
 expand d = let g = goal d
-           in incNodes >> fmap (derivStep d g) 
-                               (getLawBank >>= \lb -> enumLaws lb g)
+           in do incNodes
+                 applyDerivH d $ fmap (derivStep d g) 
+                                      (do lb <- getLawBank
+                                          applyLawH d (constrainLaws d
+                                                       (enumLaws lb g)))
 
 allit :: Deriv -> Prover Deriv
 allit d = return d `mplus` (expand d >>- prune >>- allit)
@@ -38,16 +41,31 @@ allit d = return d `mplus` (expand d >>- prune >>- allit)
 pair :: (a -> c) -> (b -> d) -> (a,b) -> (c,d)
 pair f g ~(x,y) = (f x, g y)
 
-testProver m = let st = PS { expanded = 0, depth = 0, visited = [] }
-               in runProver st testLaws $ m
+
+initState =  PS { expanded = 0, depth = 0, visited = [] }
+initEnv =  PE { lawBank = testLaws, heuristics = testH }
+
+testProver m = runProver initState initEnv $ m
 
 prove :: Formula -> (Deriv, ProverState)
-prove f = pair head id $ runProver st testLaws (toplevel f)
-          where st = PS { expanded = 0, depth = 0, visited = [] } 
-                toplevel f = once $ do d <- allit (startDeriv f)
+prove f = pair head id $ runProver initState initEnv (toplevel f)
+          where toplevel f = once $ do d <- allit (startDeriv f)
                                        guard (qed d)
                                        return d
 
+-- Trivial Heuristics
+idH :: Heuristics
+idH = (h1, h2, h3)
+    where h1 _ _ lb = lb
+          h2 _ _ ls = ls
+          h3 _ _ cs = cs
+
+-- Test Heuristics
+testH :: Heuristics
+testH = (h1, h2, h3)
+    where h1 (PS { depth = d}) _ = filter (\ l -> (d==0) || ordLaws l < 10)
+          h2 _ _ ls = ls
+          h3 _ _ cs = sortBy ( \x y -> compare (size $ goal x) (size $ goal y)) cs
 
 -- Heuristics (old stuff)
 
