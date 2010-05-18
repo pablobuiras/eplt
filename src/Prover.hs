@@ -31,9 +31,8 @@ expand :: Deriv -> Prover Deriv
 expand d = let g = goal d
            in do incNodes
                  applyDerivH d $ fmap (derivStep d g) 
-                                      (do lb <- getLawBank
-                                          applyLawH d (constrainLaws d
-                                                       (enumLaws lb g)))
+                                      (do lb <- constrainLaws d getLawBank
+                                          applyLawH d (enumLaws lb g))
 
 allit :: Deriv -> Prover Deriv
 allit d = return d `mplus` (expand d >>- prune >>- allit)
@@ -63,7 +62,7 @@ idH = (h1, h2, h3)
 -- Test Heuristics
 testH :: Heuristics
 testH = (h1, h2, h3)
-    where h1 (PS { depth = d}) _ = filter (\ l -> (d==0) || ordLaws l < 10)
+    where h1 (PS { depth = d}) _ = filter (\ l -> ordLaws l < 10)
           h2 _ _ ls = ls
           h3 _ _ cs = sortBy ( \x y -> compare (size $ goal x) (size $ goal y)) cs
 
