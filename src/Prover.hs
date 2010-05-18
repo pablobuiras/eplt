@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
 module Prover where
 
 import Formula
@@ -6,180 +7,69 @@ import Control.Monad
 import Data.Monoid
 import Data.Maybe
 import Data.List
+import Control.Monad.Trans
+import Lazy
+import Control.Monad.Sharing.Classes
 import Control.Monad.Logic.Class
-import Control.Monad.Logic
-import Control.Monad.Writer
-import Control.Monad.State
-import Control.Monad.Reader
+import Control.Monad.Reader.Class
+import Control.Monad.Writer.Class
+import Control.Monad.State.Class
+import ProverMonad
 import Debug.Trace
 import Laws
 import Subst
 import Proof
+import Deriv
 
-type HState = Int
-
-match :: (MonadPlus mp) => Formula -> Formula -> mp Subst
-match (Var p) f = return (p |-> f)
-match FFalse FFalse = return []
-match FFalse _ = mzero
-match FTrue FTrue = return []
-match FTrue _ = mzero
-match (Not f) (Not g) = match f g
-match (f1 :& f2) (f3 :& f4) = do 	m1 <- match f1 f3
-					m2 <- match f2 f4
-					return (m1 ++ m2)
-match (f1 :| f2) (f3 :| f4) = do 	m1 <- match f1 f3
-					m2 <- match f2 f4
-					return (m1 ++ m2)
-match (f1 :== f2) (f3 :== f4) = do 	m1 <- match f1 f3
-					m2 <- match f2 f4
-					return (m1 ++ m2)
-match (f1 :=> f2) (f3 :=> f4) = do 	m1 <- match f1 f3
-					m2 <- match f2 f4
-					return (m1 ++ m2)
-match (f1 :<= f2) (f3 :<= f4) = do 	m1 <- match f1 f3
-					m2 <- match f2 f4
-					return (m1 ++ m2)
-match (_ :& _ ) _ = mzero
-match (_ :| _ ) _ = mzero
-match (_ :== _ ) _ = mzero
-match (_ :=> _ ) _ = mzero
-match (_ :<= _ ) _ = mzero
-match _ _ = mzero
-
-unify :: (Functor m, MonadPlus m) => Subst -> m Subst
-unify [] = return []
-unify ((x,y):xs) | (ls == [] || ls == [y]) = fmap ((x,y):) (unify xs)
-      		 | otherwise = mzero
-    where ls = nub [b | (a,b) <- xs, a == x]
-
-findLaws :: (Functor m, MonadPlus m) => Formula -> LawBank -> m (Law, Subst)
-findLaws f = foldr findLaw mzero
-    where findLaw l m = matcher l f `mplus` m
-          matcher l@(lhs,_) f = fmap (\s -> (l,s)) (match lhs f >>= unify)
+import Control.Monad.Logic
+import Control.Monad.State
 
 
-data DecoTree = DTVar String
-     	      | DTTrue
-	      | DTFalse
-	      | DTNot [(Law, Subst)] DecoTree
-	      | DTAnd [(Law,Subst)] DecoTree DecoTree
-	      | DTOr [(Law, Subst)] DecoTree DecoTree
-	      | DTEq [(Law, Subst)] DecoTree DecoTree
-	      deriving (Eq, Show)
+type Heuristics = ( ProverState -> LawBank, ProverState -> [(SComp,Formula)] -> [(SComp,Formula)])
+type Answer = Lazy Prover Formula
 
-testLaws = [  
-	      
-	      -- Conmutatividad
-	      (Var "a" :== Var "b", Var "b" :== Var "a") ,
-	      (Var "a" :& Var "b", Var "b" :& Var "a") ,
-	      (Var "a" :| Var "b", Var "b" :| Var "a") ,
+{-
+data MonadPlus m => Rose m a = Rose a (m (Rose m a))
 
-              -- Reflexividad
-	      (Var "a" :== Var "a", FTrue) , 
+build :: Formula -> Rose Prover Formula
+build f = Rose f (fmap build (mstep f))
 
---	      (FTrue :== FFalse, FFalse),
---	      (FTrue :== FTrue, FTrue),
+flatten :: Rose Prover Formula -> Prover Formula
+flatten (Rose f mf) = return f `interleave` (mf >>- flatten)
 
---	      (Not FTrue, FFalse),
---	      (Not FFalse, FTrue),
-	      
-	      -- Elementos neutros
-	      (Var "a" :== FTrue, Var "a"),
-	      (Var "a" :& FTrue , Var "a"),
-	      (Var "a" :| FTrue, FTrue),
-	      
-	      -- Idempotencia
-	      (Var "a" :& Var "a", Var "a"),
-	      (Var "a" :| Var "a", Var "a"),
-
-	      
---	      (Var "a" :& FFalse, FFalse),
-
---	      (Var "a" :| Var "b", Not ((Not (Var "a")) :& (Not (Var "b")))),
-
-              -- Asociatividad (faltarian agregar la inversas que a veces hacen falta)
-	      (Var "a" :== (Var "b" :== Var "c"), (Var "a" :== Var "b") :== Var "c"),
-	      (Var "a" :& (Var "b" :& Var "c"), (Var "a" :& Var "b") :& Var "c"),	      
-	      (Var "a" :| (Var "b" :| Var "c"), (Var "a" :| Var "b") :| Var "c"),
-	      
-	      -- Regla dorada
-	      ((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))), -- Beware!
-	      ((Var "a" :& Var "b") :==  Var "a", Var "b" :== (Var "a" :| Var "b")),
-	      ((Var "a" :& Var "b") :== (Var "a" :== Var "b"),(Var "a" :| Var "b")),  
-	      ((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))), -- Beware!
-	      ((Var "a" :| Var "b") :==  Var "a", Var "b" :== (Var "a" :& Var "b")),
-	      ((Var "a" :| Var "b") :== (Var "a" :== Var "b"),(Var "a" :& Var "b")), 
-	      
-	      -- Distributividad 
-	      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")),	      
-	      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ), (Var "a" :| Var "c")),
-	      
-	      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p"),
-	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p"),
-	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c")) , Var "p")
+doit :: Formula -> Answer
+doit = flatten . build
 
 
-              --(Var "a" :& Var "b", Var "b" :& Var "a"),
+instance Shareable (Lazy Prover) Formula where
+    shareArgs = const return
 
-	   ]
-ordLaws x = case x of 
-                      -- Reglas que SIEMPRE conviene seleccionar primero (reducen estructura)
-                      (Var "a" :== Var "a", FTrue) 	     	    -> 0
-		      (FTrue :== FFalse, FFalse)		    -> 0
-		      (FTrue :== FTrue, FTrue)		    	    -> 0
-		      (Not FTrue, FFalse)			    -> 0
-		      (Not FFalse, FTrue)			    -> 0
-		      (Var "a" :== FTrue, Var "a")		    -> 0
-		      (Var "a" :& FTrue , Var "a")		    -> 0
-		      (Var "a" :& Var "a", Var "a")		    -> 0
-		      (Var "a" :| Var "a", Var "a")		    -> 0
-		      (Var "a" :| FTrue, FTrue)		    	    -> 0
-		      (Var "a" :& FFalse, FFalse)		    -> 0
-		      
-		      -- Reglas que conviene aplicar en 2do lugar
-		      -- Golden rule
-		      ((Var "a" :& Var "b"), Var "a" :== (Var "b" :== (Var "a" :| Var "b"))) -> 10
-		      ((Var "a" :& Var "b") :==  Var "a", Var "b" :== (Var "a" :| Var "b")) -> 1
-		      ((Var "a" :& Var "b") :== (Var "a" :== Var "b"),(Var "a" :| Var "b")) -> 1
-		      ((Var "a" :| Var "b"), Var "a" :== (Var "b" :== (Var "a" :& Var "b"))) -> 10
-		      ((Var "a" :| Var "b") :==  Var "a", Var "b" :== (Var "a" :& Var "b")) -> 1
-		      ((Var "a" :| Var "b") :== (Var "a" :== Var "b"),(Var "a" :& Var "b")) -> 1
-		      
-		      
-		      -- Reglas que conviene aplicar en ultimo lugar
-		      
-		      -- Permutatividad
-                      (Var "a" :== Var "b", Var "b" :== Var "a") -> 1
-		      (Var "a" :& Var "b", Var "b" :& Var "a")   -> 1
-		      (Var "a" :| Var "b", Var "b" :| Var "a")   -> 1
-		      
-		      --(Var "a" :| Var "b", Not ((Not (Var "a")) :& (Not (Var "b")))) -> 2
-		      
-		      -- Asociatividad
-		      (Var "a" :== (Var "b" :== Var "c"), (Var "a" :== Var "b") :== Var "c") -> 1
-		      (Var "a" :& (Var "b" :& Var "c"), (Var "a" :& Var "b") :& Var "c") -> 1
-		      (Var "a" :| (Var "b" :| Var "c"), (Var "a" :| Var "b") :| Var "c") -> 1
-		      
-		      -- Distributidad
-		      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")) ->  1
-		      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ) , (Var "a" :| Var "c")) -> 1
-		      
-		      
-		      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p") -> 1
-		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p")-> 1  
-		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> 1
-		      
+instance Functor (Lazy Prover) where
+    fmap f lm = lift (fmap f (runLazy lm))
 
+instance MonadLogic (Lazy Prover) where
+    msplit l = let m = runLazy l
+               in lift (msplit m >>= \x -> case x of
+	                                     Nothing -> return Nothing
+					     Just (a,ma) -> return (Just (a, lift ma)))
 
-testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
-testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p") 
-testFormulc = ( (Var "p" :| (Var "q" :| Var "r") ) :== ( (Var "p" :| Var "q") :| (Var "p" :| Var "r") ) )
-testFormuld = ( (Var "p" :& Var "q") :== (Var "p" :| Var "q") :& Var "p" :& Var "q" ) 
+instance MonadProver (Lazy Prover) Formula where
+    incNodes = lift incNodes
+    incDepth = lift incDepth
+    prune = lift . prune
+    applyAll f lm = let m = runLazy lm
+                    in lift (applyAll f m)
+    getLawBank = lift getLawBank
 
+instance MonadWriter Proof (Lazy Prover) where
+    tell = lift . tell
+    listen lm = let m = runLazy lm
+                in lift (listen m)
+    pass lm = let m = runLazy lm
+              in lift (pass m)
+-}
 
--- Deco Fusion
-enumLaws :: LawBank -> Formula -> Prover (Law, Subst)
+enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
 enumLaws ls f = case f of
                   Var x -> mzero
                   FTrue -> mzero
@@ -189,37 +79,12 @@ enumLaws ls f = case f of
                   f1 :| f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
                   f1 :== f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
 
---
-
-applyl :: Formula -> (Law, Subst) -> Formula
-applyl f ((lf, rf), s) = replace lf' rf' f
-                         where lf' = substitute lf s
-			       rf' = substitute rf s
-
-substitute :: Formula -> Subst -> Formula
-substitute f = foldr (\(s,d) -> replace (Var s) d ) f 
-
-type SComp = (Law,Subst)
-type SComps = [SComp]
-data ProverState = PS { expanded :: Int, visited :: [Formula] }
-type Heuristics = ( ProverState -> LawBank, ProverState -> [(SComp,Formula)] -> [(SComp,Formula)])
-
-instance Show ProverState where
-    show (PS { expanded = n, visited = vs }) = "Search depth: " ++ show n ++ ", repeated nodes: " ++ show (length vs)
-
--- to Law.hs ->
-type LawBank = [Law] -- temporal
--- 
-
+{-
 -- mkcomp : devuelve la lista de computaciones suspendidas de las reescrituras posibles
-mkcomp :: Formula -> Prover SComp
-mkcomp f = ask >>= \lb -> inc >> enumLaws lb f
+mkcomp :: Formula -> Lazy Prover SComp
+mkcomp f = getLawBank >>= \lb -> incNodes >> enumLaws lb f
 
-type Prover a = ReaderT LawBank (WriterT Proof (LogicT (State ProverState))) a
-type Answer = Prover Formula
 
-runProver :: ProverState -> LawBank -> Prover a -> ([(a,Proof)],ProverState)
-runProver initState lb = flip runState initState . observeAllT . runWriterT . (flip runReaderT lb)
 
 mstep :: Formula -> Answer
 mstep f = do (l,s) <- mkcomp f
@@ -228,25 +93,38 @@ mstep f = do (l,s) <- mkcomp f
 
 estep :: Answer -> Answer
 estep a = do x <- a
-             vs <- fmap visited get
-             guard (not (x `elem` vs))
+             --prune x
+	     --record x
              y <- mstep x
              return y
-
+-}
+{-
 allit :: Answer -> Answer
-allit a = x `mplus` (allit x) where x = estep a
+allit a = do incDepth
+             x <- return (a>>-mstep)
+             x `mplus` (allit x)
+-}
+
+expand :: Deriv -> Prover Deriv
+expand d = let g = goal d
+           in incNodes >> fmap (derivStep d g) 
+                               (getLawBank >>= \lb -> enumLaws lb g)
+
+allit :: Deriv -> Prover Deriv
+allit d = return d `mplus` (expand d >>- prune >>- allit)
 
 pair :: (a -> c) -> (b -> d) -> (a,b) -> (c,d)
 pair f g ~(x,y) = (f x, g y)
 
-prove :: Formula -> (Proof, ProverState)
-prove f = pair (snd . head) id $ runProver st testLaws $ toplevel f
-          where st = PS { expanded = 0, visited = [] }
-                toplevel f = once $ do f' <- allit (return f)
-                                       guard (f' == FTrue)
-                                       return f'
+testProver m = let st = PS { expanded = 0, depth = 0, visited = [] }
+               in runProver st testLaws $ m
 
-inc = modify (\ps -> ps { expanded = expanded ps + 1 })
+prove :: Formula -> (Deriv, ProverState)
+prove f = pair head id $ runProver st testLaws (toplevel f)
+          where st = PS { expanded = 0, depth = 0, visited = [] } 
+                toplevel f = once $ do d <- allit (startDeriv f)
+                                       guard (qed d)
+                                       return d
 
 {-
 h_id_1 :: ProverState -> LawBank
@@ -281,11 +159,11 @@ h_experimental = (h_experimental_1, h_experimental_2)
 
 {-
 
-interleaveCat :: [[a]] -> [a]
-interleaveCat = foldr interleave []
+mplusCat :: [[a]] -> [a]
+mplusCat = foldr mplus []
 
-interleaveMap :: (a -> [a]) -> [a] -> [a]
-interleaveMap f xs  = interleaveCat $ map f xs
+mplusMap :: (a -> [a]) -> [a] -> [a]
+mplusMap f xs  = mplusCat $ map f xs
 
 
 -- Just testing... 
@@ -322,12 +200,3 @@ heuristica_2 e f fs = (fs''', 1)
 		            fs'' = map (applyl f) fs'
  			    fs''' = (sortBy (\x y -> compare (size x) (size y)) fs'')
 -}
-
-size :: Formula -> Int
-size FTrue = 0
-size FFalse = 0
-size (Var _) = 1
-size (a :& b) = max (size a) (size b) + 1
-size (a :| b) = max (size a) (size b) + 1
-size (a :== b) = max (size a) (size b) + 1
-size (Not f) = size f + 1
