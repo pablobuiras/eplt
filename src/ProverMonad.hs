@@ -46,5 +46,5 @@ instance MonadProver Prover Deriv where
   applyAll f m = P $ do lb <- ask
                         st <- get
                         let (as, s') = runProver st lb m
-                        let as' = f as
-                        msum $ map return as'
+                        put s'
+                        msum $ map return (f as)

@@ -8,66 +8,14 @@ import Data.Monoid
 import Data.Maybe
 import Data.List
 import Control.Monad.Trans
-import Lazy
-import Control.Monad.Sharing.Classes
 import Control.Monad.Logic.Class
-import Control.Monad.Reader.Class
-import Control.Monad.Writer.Class
-import Control.Monad.State.Class
 import ProverMonad
 import Debug.Trace
 import Laws
 import Subst
-import Proof
 import Deriv
 
-import Control.Monad.Logic
-import Control.Monad.State
-
-
 type Heuristics = ( ProverState -> LawBank, ProverState -> [(SComp,Formula)] -> [(SComp,Formula)])
-type Answer = Lazy Prover Formula
-
-{-
-data MonadPlus m => Rose m a = Rose a (m (Rose m a))
-
-build :: Formula -> Rose Prover Formula
-build f = Rose f (fmap build (mstep f))
-
-flatten :: Rose Prover Formula -> Prover Formula
-flatten (Rose f mf) = return f `interleave` (mf >>- flatten)
-
-doit :: Formula -> Answer
-doit = flatten . build
-
-
-instance Shareable (Lazy Prover) Formula where
-    shareArgs = const return
-
-instance Functor (Lazy Prover) where
-    fmap f lm = lift (fmap f (runLazy lm))
-
-instance MonadLogic (Lazy Prover) where
-    msplit l = let m = runLazy l
-               in lift (msplit m >>= \x -> case x of
-	                                     Nothing -> return Nothing
-					     Just (a,ma) -> return (Just (a, lift ma)))
-
-instance MonadProver (Lazy Prover) Formula where
-    incNodes = lift incNodes
-    incDepth = lift incDepth
-    prune = lift . prune
-    applyAll f lm = let m = runLazy lm
-                    in lift (applyAll f m)
-    getLawBank = lift getLawBank
-
-instance MonadWriter Proof (Lazy Prover) where
-    tell = lift . tell
-    listen lm = let m = runLazy lm
-                in lift (listen m)
-    pass lm = let m = runLazy lm
-              in lift (pass m)
--}
 
 enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
 enumLaws ls f = case f of
@@ -78,32 +26,6 @@ enumLaws ls f = case f of
                   f1 :& f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
                   f1 :| f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
                   f1 :== f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
-
-{-
--- mkcomp : devuelve la lista de computaciones suspendidas de las reescrituras posibles
-mkcomp :: Formula -> Lazy Prover SComp
-mkcomp f = getLawBank >>= \lb -> incNodes >> enumLaws lb f
-
-
-
-mstep :: Formula -> Answer
-mstep f = do (l,s) <- mkcomp f
-             tell $ proofstep f l s
-             return (applyl f (l,s))
-
-estep :: Answer -> Answer
-estep a = do x <- a
-             --prune x
-	     --record x
-             y <- mstep x
-             return y
--}
-{-
-allit :: Answer -> Answer
-allit a = do incDepth
-             x <- return (a>>-mstep)
-             x `mplus` (allit x)
--}
 
 expand :: Deriv -> Prover Deriv
 expand d = let g = goal d
@@ -125,6 +47,9 @@ prove f = pair head id $ runProver st testLaws (toplevel f)
                 toplevel f = once $ do d <- allit (startDeriv f)
                                        guard (qed d)
                                        return d
+
+
+-- Heuristics (old stuff)
 
 {-
 h_id_1 :: ProverState -> LawBank
@@ -158,13 +83,6 @@ h_experimental = (h_experimental_1, h_experimental_2)
 -}
 
 {-
-
-mplusCat :: [[a]] -> [a]
-mplusCat = foldr mplus []
-
-mplusMap :: (a -> [a]) -> [a] -> [a]
-mplusMap f xs  = mplusCat $ map f xs
-
 
 -- Just testing... 
  
