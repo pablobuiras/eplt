@@ -1,1 +1,9 @@
-:-)
+EPLT alpha1 "Looney Lambda"
+
+TODO:
+Libreadline support
+Incremental theorem proving with session support (adding and using proved theorems)
+Profiling
+Read laws from file
+...
+Profit. (?)
