@@ -13,6 +13,7 @@ import ModelBuilder
 import System.Console.Haskeline hiding (handle)
 import Control.Monad.Trans
 import Control.Exception
+import System.Exit
 
 main :: IO ()
 main = do hSetBuffering stdout NoBuffering
@@ -20,16 +21,19 @@ main = do hSetBuffering stdout NoBuffering
 	  showLawPriority
           repl
 
+exit = lift $ (putStrLn "Bye." >> exitWith ExitSuccess)
+
 mySettings = setComplete noCompletion defaultSettings
+
 
 repl :: IO ()
 repl= runInputT mySettings $ forever $
          do m <- getInputLine "> "
             case m of
-              Nothing -> return ()
+              Nothing -> exit
+              Just [] -> return ()
               Just l -> lift $ handle (\UserInterrupt -> putStrLn "Proof interrupted." >> repl) $ 
-                  do when (null l) repl
-                     case parse formula "<interactive>" l of
+                  do case parse formula "<interactive>" l of
                        Left err -> print err
                        Right f -> do putStr "Checking..."
                                      case tauto f of
