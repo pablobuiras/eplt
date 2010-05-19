@@ -6,7 +6,6 @@ import Control.Monad
 import Data.Monoid
 import Data.Maybe
 import Data.List
-import Lazy
 import Subst
 
 type Law = (Formula, Formula)
@@ -62,15 +61,15 @@ testLaws = [
 	      (Var "a" :| (Var "b" :== Var "c"), (Var "a" :| Var "b") :== (Var "a" :| Var "c")),	      
 	      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ), (Var "a" :| Var "c")),
 	      
-	      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p"),
-	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p"),
-	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c")) , Var "p")
+	      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "a"),
+	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "a"),
+	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c")) , Var "a")
 
 
               --(Var "a" :& Var "b", Var "b" :& Var "a"),
 
 	   ]
-ordLaws x = case x of 
+{-ordLaws x = case x of 
                       -- Reglas que SIEMPRE conviene seleccionar primero (reducen estructura)
                       (Var "a" :== Var "a", FTrue) 	     	    -> 0
 		      (FTrue :== FFalse, FFalse)		    -> 0
@@ -113,18 +112,16 @@ ordLaws x = case x of
 		      (Var "a" :| ( (Var "b" :== Var "c") :== (Var "a" :| Var "b") ) , (Var "a" :| Var "c")) -> 1
 		      
 		      
-		      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "p") -> 1
-		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "p")-> 1  
-		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "p")-> 1
+		      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "a") -> 1
+		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "a")-> 1  
+		      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c") ) , Var "a")-> 1
 		      
-
+-}
 
 testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
 testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p") 
 testFormulc = ( (Var "p" :| (Var "q" :| Var "r") ) :== ( (Var "p" :| Var "q") :| (Var "p" :| Var "r") ) )
 testFormuld = ( (Var "p" :& Var "q") :== (Var "p" :| Var "q") :& Var "p" :& Var "q" ) 
-
-
 
 match :: (MonadPlus mp) => Formula -> Formula -> mp Subst
 match (Var p) f = return (p |-> f)
@@ -177,9 +174,6 @@ substitute f = foldr (\(s,d) -> replace (Var s) d ) f
 
 
 -- to Heuristics.hs -->
-
-genPriorityLaws :: [Law] -> [(Law, Int)]
-genPriorityLaws ls = zip ls $ map ( \ (l,r) -> ((size r) - (size l))*(div (size r) 2)) ls  
 
 size :: Formula -> Int
 size FTrue = 0

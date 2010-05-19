@@ -16,7 +16,9 @@ main = do hSetBuffering stdout NoBuffering
           repl
 
 repl :: IO ()
-repl = forever $
+repl=do putStr "Using this axioms: \n"
+	showLawPriority
+        forever $
          do putStr "> "                   
 	    l <- getLine
             when (null l) repl

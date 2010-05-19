@@ -4,18 +4,14 @@ module Prover where
 import Formula
 import Formula.Pretty
 import Control.Monad
-import Data.Monoid
 import Data.Maybe
 import Data.List
-import Control.Monad.Trans
 import Control.Monad.Logic.Class
 import ProverMonad
 import Debug.Trace
 import Laws
 import Subst
 import Deriv
-
-
 
 enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
 enumLaws ls f = case f of
@@ -41,17 +37,18 @@ pair :: (a -> c) -> (b -> d) -> (a,b) -> (c,d)
 pair f g ~(x,y) = (f x, g y)
 
 
-initState =  PS { expanded = 0, depth = 0, visited = [] }
+initState f =  PS { expanded = 0, depth = 0, visited = [f] }
 initEnv =  PE { lawBank = testLaws, heuristics = testH }
 
-testProver m = runProver initState initEnv $ m
+--testProver m = runProver initState initEnv $ m
 
 prove :: Formula -> (Deriv, ProverState)
-prove f = pair head id $ runProver initState initEnv (toplevel f)
+prove f = pair head id $ runProver (initState f) initEnv (toplevel f)
           where toplevel f = once $ do d <- allit (startDeriv f)
                                        guard (qed d)
                                        return d
 
+-- to Heuristics.hs -->
 -- Trivial Heuristics
 idH :: Heuristics
 idH = (h1, h2, h3)
@@ -62,76 +59,22 @@ idH = (h1, h2, h3)
 -- Test Heuristics
 testH :: Heuristics
 testH = (h1, h2, h3)
-    where h1 (PS { depth = d}) _ = filter (\ l -> ordLaws l < 10)
+    where h1 (PS { visited = fs}) _ ls = if (unit fs) then ls else filter (\ l -> ordGenericLaws l < 1) ls-- he1
           h2 _ _ ls = ls
           h3 _ _ cs = sortBy ( \x y -> compare (size $ goal x) (size $ goal y)) cs
+	  unit (_:[]) = True
+	  unit _      = False
 
--- Heuristics (old stuff)
+genLawPriority :: [Law] -> [(Law, Int)]
+genLawPriority ls = zip ls $ map ( \ (l,r) -> ((size r) - (size l))) ls 
 
-{-
-h_id_1 :: ProverState -> LawBank
-h_id_1 ps = lawbank ps
+testLawPriority = genLawPriority testLaws
 
-h_id_2 :: ProverState -> [(SComp,Formula)] -> [(SComp,Formula)]
-h_id_2 _ ls = ls
+showLawPriority :: IO ()
+showLawPriority = do  putStr $ (pr "Law") ++ "\t Priority\n"
+                      mapM_ ( \ (l,p) -> putStr (pr (show l) ++ "\t   "++ show p ++ "\n")) testLawPriority  
 
-h_id :: Heuristics
-h_id = (h_id_1, h_id_2)
+pr s = s ++ take w (repeat ' ')
+        where w = 40 - length s
 
-h_stable_1 :: ProverState -> LawBank
-h_stable_1 ps = lawbank ps
-
-h_stable_2 :: ProverState -> [(SComp,Formula)] -> [(SComp,Formula)]
-h_stable_2 _ cs = sortBy ( \ (_,x) (_,y) -> compare (size x) (size y)) cs
-
-h_stable :: Heuristics
-h_stable = (h_stable_1, h_stable_2)
-
- 
-h_experimental_1 :: ProverState -> LawBank
-h_experimental_1 (Status {expanded = n, lawbank = lb}) = if (n==0) then lb else []
-
-h_experimental_2 :: ProverState -> [(SComp,Formula)] -> [(SComp,Formula)]
-h_experimental_2 _ cs = sortBy ( \ (_,x) (_,y) -> compare (size x) (size y)) cs
-
-h_experimental :: Heuristics
-h_experimental = (h_experimental_1, h_experimental_2)
-
--}
-
-{-
-
--- Just testing... 
- 
-step :: [[Formula]] -> [Formula] -> HState -> [Formula]
-step []           acc e = []
-step ([]:fss)     acc e = step fss acc e
-step ((f:fs):fss) acc e = nfs ++ (step (fss++[fs,nfs]) (nfs++acc) e')
-                            where (fs',e') = heuristica_2 e f (mkcomp f)
-			          nfs = filter (\ x -> not (elem x acc)) $ nub fs'
-
-heuristica_id :: HState -> Formula -> SComps -> ([Formula], HState)
-heuristica_id e f fs = (mapplyl fs, e)
-                       where mapplyl = map (applyl f) -- Force the suspended computations
-
-heuristica :: HState -> Formula -> SComps -> ([Formula], HState) -- La heurística fuera las computaciones cuando lo necesite
-heuristica e f fs = ( fs'', e)  
-                    where fs' = sortBy (\x y-> compare (ordLaws (fst x)) (ordLaws (fst y))) fs -- Better rule
-		          fs'' = sortBy (\x y -> compare (size x) (size y)) $  map (applyl f) fs' -- Most reduced branch
-
-
-t y =  sum $ map (size.snd) $ snd y
-
-
-
-heuristica_1 :: HState -> Formula -> SComps -> ([Formula], HState)
-heuristica_1 e f fs = (fs'', e+1)
-		      where fs' = map (applyl f) fs
-		            fs'' = (sortBy (\x y -> if (e<5) then compare (size y) (size x) else compare (size x) (size y)) fs')
-
-heuristica_2 :: HState -> Formula -> SComps -> ([Formula], HState) -- "Magic" heuristic
-heuristica_2 e f fs = (fs''', 1)
-		      where fs' = if (e>0) then filter (\x -> (ordLaws (fst x)) < 10) fs else fs
-		            fs'' = map (applyl f) fs'
- 			    fs''' = (sortBy (\x y -> compare (size x) (size y)) fs'')
--}
+ordGenericLaws = fromJust . flip lookup testLawPriority
