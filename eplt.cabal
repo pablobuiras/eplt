@@ -7,7 +7,7 @@ Cabal-Version:       >=1.2
 
 Executable eplt
   Main-is:           Main.hs
-  other-modules:     Formula Formula.Parser Formula.Pretty Test
+  other-modules:     Formula Formula.Parser Formula.Pretty Test Prover ProverMonad
   hs-source-dirs:    src
-  Build-Depends:     base >= 3 && < 5, parsec >= 2, pretty >= 1.0.1.0, QuickCheck >= 2.1, logict >= 0.1, containers >= 0.2, mtl
+  Build-Depends:     base >= 3 && < 5, parsec >= 2, pretty >= 1.0.1.0, QuickCheck >= 2.1, logict >= 0.1, containers >= 0.2, mtl, haskeline
   Extensions:        TypeSynonymInstances
