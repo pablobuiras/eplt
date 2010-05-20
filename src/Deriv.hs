@@ -26,11 +26,11 @@ qed :: Deriv -> Bool
 qed d = goal d == FTrue
 
 instance Show Step where
-    show (Step { law = (lhs,rhs), subst = s}) = "{ " ++ show lhs ++ " = " ++ show rhs ++ " }"
+    show (Step { law = (lhs,rhs), subst = s}) = "= { " ++ show lhs ++ " = " ++ show rhs ++ " }"
 
 instance Show Deriv where
     show (Deriv { formulae = fs, steps = ss }) =
         let g : xs = reverse fs
-        in (map show (reverse ss) `interleaveStr` map showFormula xs)
+        in show g ++ '\n':(map show (reverse ss) `interleaveStr` map showFormula xs)
             where showFormula f = show f
                   interleaveStr xs ys = concatMap (\(x,y) -> x ++ '\n':y ++ "\n") $ zip xs ys

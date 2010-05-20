@@ -6,6 +6,7 @@ import Formula.Pretty
 import Control.Monad
 import Data.Maybe
 import Data.List
+import Data.Ord
 import Control.Monad.Logic.Class
 import ProverMonad
 import Debug.Trace
@@ -42,15 +43,18 @@ pair f g ~(x,y) = (f x, g y)
 
 
 initState f =  PS { expanded = 0, depth = 0, visited = [f] }
-initEnv =  PE { lawBank = testLaws, heuristics = testH }
+initEnv =  PE { lawBank = undefined, heuristics = testH }
 
 --testProver m = runProver initState initEnv $ m
 
+reduceTo :: Formula -> Formula -> Prover Deriv
+reduceTo lhs rhs = do d <- allit (startDeriv lhs)
+                      guard (goal d == rhs)
+                      return d
+
 prove :: LawBank -> Formula -> Maybe (Deriv, ProverState)
 prove lb f = wrapMaybe $ runProver (initState f) (initEnv { lawBank = lb }) (toplevel f)
-    where toplevel f = once $ do d <- allit (startDeriv f)
-                                 guard (qed d)
-                                 return d
+    where toplevel f = once $ f `reduceTo` FTrue
           wrapMaybe ([],_) = Nothing
           wrapMaybe (xs,s) = Just (head xs, s)
 
@@ -80,8 +84,8 @@ idH = (h1, h2, h3)
 -- Test Heuristics
 testH :: Heuristics
 testH = (h1, h2, h3)
-    where h1 (PS { visited = fs}) _ ls = if (unit fs) then ls else filter (\ l -> ordGenericLaws ls l < 1) ls-- he1
+    where h1 (PS { visited = fs}) _ ls = if (unit fs) then ls else filter ((<1) . ordGenericLaws) ls -- he1
           h2 _ _ ls = ls
-          h3 _ _ cs = sortBy ( \x y -> compare (size $ goal x) (size $ goal y)) cs
+          h3 _ _ = sortBy (comparing (size . goal))
 	  unit (_:[]) = True
 	  unit _      = False

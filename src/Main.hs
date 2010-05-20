@@ -1,12 +1,8 @@
 module Main where
 
 import Prover
-import Formula
 import Formula.Parser (parser)
 import Formula.Pretty
-import Text.ParserCombinators.Parsec
-import Data.Either
-import qualified Data.Map as M
 import System.IO
 import Control.Monad
 import ModelBuilder (modelCheck)
@@ -43,3 +39,4 @@ repl lb = runInputT mySettings $ forever $
                      putStrLn "Formula is a tautology. Proving..."
                      (p,st) <- prover lb f 
                      print p >> print st
+

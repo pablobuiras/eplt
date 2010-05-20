@@ -6,21 +6,22 @@ import Control.Monad
 import Data.Monoid
 import Data.Maybe
 import Data.List
+import Data.Ord
 import Subst
 
 type Law = (Formula, Formula)
-type LawBank = [Law]
+type LawBank = [(Law, Int)]
 
 type SComp = (Law,Subst)
 type SComps = [SComp]
 
+testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
+testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p") 
+testFormulc = ( (Var "p" :| (Var "q" :| Var "r") ) :== ( (Var "p" :| Var "q") :| (Var "p" :| Var "r") ) )
+testFormuld = ( (Var "p" :& Var "q") :== (Var "p" :| Var "q") :& Var "p" :& Var "q" ) 
+
 testLaws = [  
 	      
-	      -- Conmutatividad
-	      (Var "a" :== Var "b", Var "b" :== Var "a") ,
-	      (Var "a" :& Var "b", Var "b" :& Var "a") ,
-	      (Var "a" :| Var "b", Var "b" :| Var "a") ,
-
               -- Reflexividad
 	      (Var "a" :== Var "a", FTrue) , 
 
@@ -63,17 +64,16 @@ testLaws = [
 	      
 	      (Var "a" :& (Var "b" :== Var "c"), ((Var "a" :& Var "b") :== (Var "a" :& Var "c")) :== Var "a"),
 	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") ), (Var "a" :& Var "c") :== Var "a"),
-	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c")) , Var "a")
+	      (Var "a" :& ( (Var "b" :== Var "c") :== (Var "a" :& Var "b") :== (Var "a" :& Var "c")) , Var "a"),
 
+	      -- Conmutatividad
+	      (Var "a" :& Var "b", Var "b" :& Var "a") ,
+	      (Var "a" :| Var "b", Var "b" :| Var "a") ,
+	      (Var "a" :== Var "b", Var "b" :== Var "a")
 
               --(Var "a" :& Var "b", Var "b" :& Var "a"),
 
 	   ]
-
-testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
-testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p") 
-testFormulc = ( (Var "p" :| (Var "q" :| Var "r") ) :== ( (Var "p" :| Var "q") :| (Var "p" :| Var "r") ) )
-testFormuld = ( (Var "p" :& Var "q") :== (Var "p" :| Var "q") :& Var "p" :& Var "q" ) 
 
 match :: (MonadPlus mp) => Formula -> Formula -> mp Subst
 match (Var p) f = return (p |-> f)
@@ -112,7 +112,7 @@ unify ((x,y):xs) | (ls == [] || ls == [y]) = fmap ((x,y):) (unify xs)
 
 findLaws :: (Functor m, MonadPlus m) => Formula -> LawBank -> m (Law, Subst)
 findLaws f = foldr findLaw mzero
-    where findLaw l m = matcher l f `mplus` m
+    where findLaw (l,_) m = matcher l f `mplus` m
           matcher l@(lhs,_) f = fmap (\s -> (l,s)) (match lhs f >>= unify)
 
 
@@ -124,19 +124,17 @@ applyl f ((lf, rf), s) = replace lf' rf' f
 substitute :: Formula -> Subst -> Formula
 substitute f = foldr (\(s,d) -> replace (Var s) d ) f 
 
-genLawPriority :: [Law] -> [(Law, Int)]
-genLawPriority ls = zip ls $ map ( \ (l,r) -> ((size r) - (size l))) ls 
-
-testLawPriority = genLawPriority testLaws
+genLawPriority :: [Law] -> LawBank
+genLawPriority ls = sortBy (comparing snd) $ zip ls $ map ( \ (l,r) -> ((size r) - (size l))) ls 
 
 showLawPriority :: LawBank -> IO ()
 showLawPriority lb = do  putStr $ (pr "Law") ++ "\t Priority\n"
-                         mapM_ ( \ (l,p) -> putStr (pr (show l) ++ "\t   "++ show p ++ "\n")) (genLawPriority lb)
+                         mapM_ ( \ (l,p) -> putStr (pr (show l) ++ "\t   "++ show p ++ "\n")) lb
 
 pr s = s ++ take w (repeat ' ')
         where w = 40 - length s
 
-ordGenericLaws lb = fromJust . flip lookup (genLawPriority lb)
+ordGenericLaws = snd
 
 -- to Heuristics.hs -->
 
