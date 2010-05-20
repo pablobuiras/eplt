@@ -2,47 +2,44 @@ module Main where
 
 import Prover
 import Formula
-import Formula.Parser (formula)
+import Formula.Parser (parser)
 import Formula.Pretty
 import Text.ParserCombinators.Parsec
 import Data.Either
 import qualified Data.Map as M
 import System.IO
 import Control.Monad
-import ModelBuilder
+import ModelBuilder (modelCheck)
 import System.Console.Haskeline hiding (handle)
 import Control.Monad.Trans
 import Control.Exception
 import System.Exit
+import Exceptions
+import Laws
+import Configure.Load
 
 main :: IO ()
 main = do hSetBuffering stdout NoBuffering
+          lb <- loadLawsFrom "default.laws"
           putStr "Using these axioms: \n"
-	  showLawPriority
-          repl
+	  showLawPriority lb
+          repl lb
 
 exit = lift $ (putStrLn "Bye." >> exitWith ExitSuccess)
 
 mySettings = setComplete noCompletion defaultSettings
 
-
-repl :: IO ()
-repl= runInputT mySettings $ forever $
-         do m <- getInputLine "> "
-            case m of
+repl :: LawBank -> IO ()
+repl lb = runInputT mySettings $ forever $
+          do m <- getInputLine "> "
+             case m of
               Nothing -> exit
               Just [] -> return ()
-              Just l -> lift $ handle (\UserInterrupt -> putStrLn "Proof interrupted." >> repl) $ 
-                  do case parse formula "<interactive>" l of
-                       Left err -> print err
-                       Right f -> do putStr "Checking..."
-                                     case tauto f of
-                                       Counter v ->
-                                           do putStr "Formula is not a tautology. Counterexample: "
-                                              mapM_ (putStr . show) (M.toList v)
-                                              putStr "\n"
-                                       Tauto -> do putStrLn "Formula is a tautology. Proving..."
-                                                   case prove f of
-                                                     (p,st) -> print p >> print st
-
---either print print . parse formula "<interactive>" l  -- use readline later
+              Just l -> lift $ flip catches [Handler (\UserInterrupt -> putStrLn "Proof interrupted." >> repl lb),
+                                             Handler (\(SomeEPLTException e) -> print e)] $ 
+                  do f <- parser "<interactive>" l
+                     putStr "Checking..."
+                     modelCheck f
+                     putStrLn "Formula is a tautology. Proving..."
+                     (p,st) <- prover lb f 
+                     print p >> print st

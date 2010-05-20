@@ -172,6 +172,19 @@ applyl f ((lf, rf), s) = replace lf' rf' f
 substitute :: Formula -> Subst -> Formula
 substitute f = foldr (\(s,d) -> replace (Var s) d ) f 
 
+genLawPriority :: [Law] -> [(Law, Int)]
+genLawPriority ls = zip ls $ map ( \ (l,r) -> ((size r) - (size l))) ls 
+
+testLawPriority = genLawPriority testLaws
+
+showLawPriority :: LawBank -> IO ()
+showLawPriority lb = do  putStr $ (pr "Law") ++ "\t Priority\n"
+                         mapM_ ( \ (l,p) -> putStr (pr (show l) ++ "\t   "++ show p ++ "\n")) (genLawPriority lb)
+
+pr s = s ++ take w (repeat ' ')
+        where w = 40 - length s
+
+ordGenericLaws lb = fromJust . flip lookup (genLawPriority lb)
 
 -- to Heuristics.hs -->
 

@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Prover where
 
 import Formula
@@ -12,6 +12,10 @@ import Debug.Trace
 import Laws
 import Subst
 import Deriv
+
+import Data.Typeable
+import Control.Exception
+import Exceptions
 
 enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
 enumLaws ls f = case f of
@@ -42,11 +46,28 @@ initEnv =  PE { lawBank = testLaws, heuristics = testH }
 
 --testProver m = runProver initState initEnv $ m
 
-prove :: Formula -> (Deriv, ProverState)
-prove f = pair head id $ runProver (initState f) initEnv (toplevel f)
-          where toplevel f = once $ do d <- allit (startDeriv f)
-                                       guard (qed d)
-                                       return d
+prove :: LawBank -> Formula -> Maybe (Deriv, ProverState)
+prove lb f = wrapMaybe $ runProver (initState f) (initEnv { lawBank = lb }) (toplevel f)
+    where toplevel f = once $ do d <- allit (startDeriv f)
+                                 guard (qed d)
+                                 return d
+          wrapMaybe ([],_) = Nothing
+          wrapMaybe (xs,s) = Just (head xs, s)
+
+
+-- IO Interface
+data ProofNotFoundException = ProofNotFound
+                            deriving Typeable
+
+instance Show ProofNotFoundException where
+    show ProofNotFound = "Formula does not follow from current axioms."
+
+instance Exception ProofNotFoundException where
+    toException = epltExceptionToException
+    fromException = epltExceptionFromException
+
+prover :: LawBank -> Formula -> IO (Deriv, ProverState)
+prover lb f = maybe (throwIO ProofNotFound) return $ prove lb f
 
 -- to Heuristics.hs -->
 -- Trivial Heuristics
@@ -59,22 +80,8 @@ idH = (h1, h2, h3)
 -- Test Heuristics
 testH :: Heuristics
 testH = (h1, h2, h3)
-    where h1 (PS { visited = fs}) _ ls = if (unit fs) then ls else filter (\ l -> ordGenericLaws l < 1) ls-- he1
+    where h1 (PS { visited = fs}) _ ls = if (unit fs) then ls else filter (\ l -> ordGenericLaws ls l < 1) ls-- he1
           h2 _ _ ls = ls
           h3 _ _ cs = sortBy ( \x y -> compare (size $ goal x) (size $ goal y)) cs
 	  unit (_:[]) = True
 	  unit _      = False
-
-genLawPriority :: [Law] -> [(Law, Int)]
-genLawPriority ls = zip ls $ map ( \ (l,r) -> ((size r) - (size l))) ls 
-
-testLawPriority = genLawPriority testLaws
-
-showLawPriority :: IO ()
-showLawPriority = do  putStr $ (pr "Law") ++ "\t Priority\n"
-                      mapM_ ( \ (l,p) -> putStr (pr (show l) ++ "\t   "++ show p ++ "\n")) testLawPriority  
-
-pr s = s ++ take w (repeat ' ')
-        where w = 40 - length s
-
-ordGenericLaws = fromJust . flip lookup testLawPriority

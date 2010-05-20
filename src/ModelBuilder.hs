@@ -1,8 +1,12 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module ModelBuilder where
 
 import Formula
 import Control.Monad
 import qualified Data.Map as M
+import Exceptions
+import Control.Exception
+import Data.Typeable
 
 -- for testing only
 import Test.QuickCheck
@@ -70,3 +74,19 @@ the model is returned in the "Maybe" monad.
 -}
 sat :: Formula -> Maybe Val
 sat = enumModels -- pona!
+
+-- IO interface
+data CounterException = CounterException Val
+                      deriving Typeable
+
+instance Show CounterException where
+    show (CounterException v) = "Formula is not a tautology. Counterexample: " ++ concatMap show (M.toList v)
+
+instance Exception CounterException where
+    toException = epltExceptionToException
+    fromException = epltExceptionFromException
+
+modelCheck :: Formula -> IO ()
+modelCheck f = case tauto f of
+                 Counter v -> throwIO (CounterException v)
+                 Tauto -> return ()

@@ -1,0 +1,9 @@
+a == b -> b == a
+a /\ b -> b /\ a
+a \/ b -> b \/ a
+a == a -> true
+a == true -> a
+a /\ true -> a
+a \/ true -> true
+a /\ a -> a
+a \/ a -> a

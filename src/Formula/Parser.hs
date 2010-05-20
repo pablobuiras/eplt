@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module Formula.Parser where
 
 import Formula
@@ -5,11 +6,14 @@ import Text.ParserCombinators.Parsec
 import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language (haskellStyle)
+import Exceptions
+import Control.Exception
+import Data.Typeable
 
 -- Lexer
 lexer = P.makeTokenParser
         (haskellStyle { P.reservedNames = ["true", "false"],
-                        P.reservedOpNames = ["/\\", "\\/", "~", "=>", "<=", "==", "="] })
+                        P.reservedOpNames = ["/\\", "\\/", "~", "=>", "<=", "==", "=", "->"] })
 whiteSpace = P.whiteSpace lexer
 lexeme = P.lexeme lexer
 symbol = P.symbol lexer
@@ -34,3 +38,22 @@ term = parens formula
        <|> (reserved "true" >> return FTrue)
        <|> (reserved "false" >> return FFalse)
        <?> "proposition"
+
+law = do f <- formula
+         reservedOp "->"
+         f' <- formula
+         return (f, f')
+
+-- IO interface
+data ParserException = ParserException ParseError
+                     deriving Typeable
+
+instance Show ParserException where
+    show (ParserException pe) = show pe
+
+instance Exception ParserException where
+    toException = epltExceptionToException
+    fromException = epltExceptionFromException
+
+parser :: String -> String -> IO Formula
+parser l = either (throwIO . ParserException) return . parse formula l
