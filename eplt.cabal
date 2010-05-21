@@ -1,5 +1,5 @@
 Name:                eplt
-Version:             0.1
+Version:             0.2
 Description:         Equational Propositional Logic Toolkit
 License:             GPL
 Build-Type:          Simple
@@ -7,7 +7,6 @@ Cabal-Version:       >=1.2
 
 Executable eplt
   Main-is:           Main.hs
-  other-modules:     Formula Formula.Parser Formula.Pretty Test Prover ProverMonad
+  other-modules:     Formula Formula.Parser Formula.Pretty Test Prover ProverMonad Laws Subst Commands Commands.Parser Deriv ModelBuilder Configure.Load Exceptions
   hs-source-dirs:    src
   Build-Depends:     base >= 3 && < 5, parsec >= 2, pretty >= 1.0.1.0, QuickCheck >= 2.1, logict >= 0.1, containers >= 0.2, mtl, haskeline
-  Extensions:        TypeSynonymInstances
