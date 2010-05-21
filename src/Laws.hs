@@ -136,6 +136,9 @@ pr s = s ++ take w (repeat ' ')
 
 ordGenericLaws = snd
 
+addLaw :: Law -> LawBank -> LawBank
+addLaw l lb = genLawPriority (l : map fst lb)
+
 -- to Heuristics.hs -->
 
 size :: Formula -> Int

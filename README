@@ -1,9 +1,17 @@
-EPLT alpha1 "Looney Lambda"
+EPLT alpha2 "Cackling Church"
+
+Commands so far:
+
+:quit
+:showLaws
+:addLaw
+:loadLaws (replaces previous LawBank)
+:prove (interactive theorem proving, not implemented yet)
+
+...and more to come.
 
 TODO:
-Libreadline support
 Incremental theorem proving with session support (adding and using proved theorems)
 Profiling
-Read laws from file
 ...
 Profit. (?)

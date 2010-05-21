@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-
 module Test where
 
 import Test.QuickCheck
