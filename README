@@ -1,4 +1,4 @@
-EPLT alpha2 "Cackling Church"
+EPLT alpha2.1 "Correct Curry"
 
 Commands so far:
 
@@ -6,12 +6,14 @@ Commands so far:
 :showLaws
 :addLaw
 :loadLaws (replaces previous LawBank)
-:prove (interactive theorem proving, not implemented yet)
+:prove (interactive theorem proving)
 
 ...and more to come.
 
 TODO:
 Incremental theorem proving with session support (adding and using proved theorems)
+Show instances (Law, Subts)
+Use haskeline in interactive theorem proving 
 Profiling
 ...
 Profit. (?)
