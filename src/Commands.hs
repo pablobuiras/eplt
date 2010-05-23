@@ -3,8 +3,10 @@ module Commands where
 
 import Laws
 import Formula
+import Subst
 
 data Command = LoadLaws FilePath
+             | Reload
              | ShowLaws
              | AddLaw Law
              | ProveAuto Formula

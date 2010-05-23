@@ -13,7 +13,7 @@ import Data.Typeable
 
 -- Lexer
 lexer = P.makeTokenParser
-        (haskellStyle { P.reservedNames = [":loadLaws", ":addLaw", ":prove", ":quit", ":showLaws"] })
+        (haskellStyle { P.reservedNames = [":loadLaws", ":addLaw", ":prove", ":quit", ":showLaws", ":reload"] })
 whiteSpace = P.whiteSpace lexer
 lexeme = P.lexeme lexer
 symbol = P.symbol lexer
@@ -27,7 +27,11 @@ command = choice [loadLaws,
                   addLaw,
                   prove,
                   quit,
+                  reload,
                   fmap ProveAuto formula] >>= (eof >>) . return
+
+reload = do reserved ":reload"
+            return Reload
 
 showLaws = do reserved ":showLaws"
               return ShowLaws

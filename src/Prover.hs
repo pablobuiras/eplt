@@ -75,7 +75,7 @@ prover :: LawBank -> Formula -> IO (Deriv, ProverState)
 prover lb f = maybe (throwIO ProofNotFound) return $ prove lb f
 
 -- TODO: use haskeline
-
+{-
 stepprover :: Formula -> IO ()
 stepprover f = do putStrLn $ "Choose a posible step to prove "++(show f)
                   list <- showPosLaws (genLawPriority testLaws) f
@@ -95,7 +95,8 @@ showPosLaws lb f = do mapM_ s pl
                       return pl
                         where pl = zip [1 ..] (observeAll (enumLaws lb f))
 		              s (n,(l,s))  = putStrLn (pr (showLaw l) ++ " with: "++pr (showSubts s)++" -> "++show n)   
-
+-}
+stepprover f = putStrLn "Unimplemented."
 
 
 -- to Heuristics.hs -->
@@ -109,7 +110,7 @@ idH = (h1, h2, h3)
 -- Test Heuristics
 testH :: Heuristics
 testH = (h1, h2, h3)
-    where h1 (PS { visited = fs}) _ ls = if (unit fs) then ls else filter ((<1) . ordGenericLaws) ls -- he1
+    where h1 (PS { visited = fs}) _ lb = if (unit fs) then lb else lb { laws = filter ((<1) . ordGenericLaws) (laws lb) } -- he1
           h2 _ _ ls = ls
           h3 _ _ = sortBy (comparing (size . goal))
 	  unit (_:[]) = True
