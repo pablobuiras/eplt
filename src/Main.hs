@@ -16,6 +16,7 @@ import Commands
 import Commands.Parser
 import Prelude hiding (read, catch)
 import Data.IORef
+import System.CPUTime
 
 mySettings = setComplete noCompletion defaultSettings
 main :: IO ()
@@ -27,6 +28,13 @@ main = do hSetBuffering stdout NoBuffering
           runInputT mySettings (repl lbRef)
 
 exit = putStrLn "Bye." >> exitWith ExitSuccess
+
+time :: IO a -> IO a
+time m = do t1 <- getCPUTime
+            a <- m
+            t2 <- getCPUTime
+            putStrLn ("Proof completed in " ++ show (fromIntegral (t2 - t1)/(10^12)) ++ " second(s).")
+            return a
 
 repl :: IORef LawBank -> InputT IO ()
 repl lbRef = do cmd <- read
@@ -47,11 +55,11 @@ repl lbRef = do cmd <- read
                 AddLaw l -> do let lb' = addLaw l lb
                                writeIORef lbRef lb'
                                putStrLn "Law added."
-                ProveAuto f -> (do putStr "Checking..."
-                                   modelCheck f
-                                   putStrLn "Formula is a tautology. Proving..."
-                                   (p, st) <- prover lb f
-                                   print p >> print st) `catch` (\UserInterrupt -> putStrLn "Proof interrupted.")
+                ProveAuto f -> time (do putStr "Checking..."
+                                        modelCheck f
+                                        putStrLn "Formula is a tautology. Proving..."
+                                        (p, st) <- prover lb f
+                                        print p >> print st) `catch` (\UserInterrupt -> putStrLn "Proof interrupted.")
                 Prove f -> putStrLn "Unimplemented."
                 Nop -> return ()
 
