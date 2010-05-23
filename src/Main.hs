@@ -60,6 +60,6 @@ repl lbRef = do cmd <- read
                                         putStrLn "Formula is a tautology. Proving..."
                                         (p, st) <- prover lb f
                                         print p >> print st) `catch` (\UserInterrupt -> putStrLn "Proof interrupted.")
-                Prove f -> putStrLn "Unimplemented."
+                Prove f -> stepprover f
                 Nop -> return ()
 

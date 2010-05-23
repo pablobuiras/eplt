@@ -14,11 +14,13 @@ type LawBank = [(Law, Int)]
 
 type SComp = (Law,Subst)
 type SComps = [SComp]
-
+     
 testFormula = ( (Var "p" :| (Var "p" :& Var "q")) :== Var "p") 
 testFormulb = ( (Var "p" :& (Var "p" :| Var "q")) :== Var "p") 
 testFormulc = ( (Var "p" :| (Var "q" :| Var "r") ) :== ( (Var "p" :| Var "q") :| (Var "p" :| Var "r") ) )
 testFormuld = ( (Var "p" :& Var "q") :== (Var "p" :| Var "q") :& Var "p" :& Var "q" ) 
+testFormule = ( (Var "p" :| (Var "q" :& Var "r") ) :== ( (Var "p" :| Var "q") :& (Var "p" :| Var "r") ) )
+
 
 testLaws = [  
 	      
@@ -129,7 +131,12 @@ genLawPriority ls = sortBy (comparing snd) $ zip ls $ map ( \ (l,r) -> ((size r)
 
 showLawPriority :: LawBank -> IO ()
 showLawPriority lb = do  putStr $ (pr "Law") ++ "\t Priority\n"
-                         mapM_ ( \ (l,p) -> putStr (pr (show l) ++ "\t   "++ show p ++ "\n")) lb
+                         mapM_ ( \ (l,p) -> putStr (pr (showLaw l) ++ "\t   "++ show p ++ "\n")) lb
+
+
+-- TODO: make show instances of Law and Subts
+showLaw (l,r) = show l ++ " <=> "++show r
+showSubts ss = concat $ map ( \ (v,e) -> v++" => "++show e++" , ") ss 
 
 pr s = s ++ take w (repeat ' ')
         where w = 40 - length s

@@ -8,6 +8,7 @@ import Data.Maybe
 import Data.List
 import Data.Ord
 import Control.Monad.Logic.Class
+import Control.Monad.Logic
 import ProverMonad
 import Debug.Trace
 import Laws
@@ -72,6 +73,30 @@ instance Exception ProofNotFoundException where
 
 prover :: LawBank -> Formula -> IO (Deriv, ProverState)
 prover lb f = maybe (throwIO ProofNotFound) return $ prove lb f
+
+-- TODO: use haskeline
+
+stepprover :: Formula -> IO ()
+stepprover f = do putStrLn $ "Choose a posible step to prove "++(show f)
+                  list <- showPosLaws (genLawPriority testLaws) f
+		  --n <- return $ runInputT defaultSettings $ getInputLine "==> "
+		  putStr "==> "
+		  n <- getLine 
+		  i <- return $ lookup (readInt n) list
+		  if (isJust i) then stepprover (applyl f (fromJust i)) else return ()
+
+
+
+readInt :: String -> Int
+readInt = read
+
+showPosLaws :: LawBank -> Formula -> IO ([(Int,(Law,Subst))])
+showPosLaws lb f = do mapM_ s pl
+                      return pl
+                        where pl = zip [1 ..] (observeAll (enumLaws lb f))
+		              s (n,(l,s))  = putStrLn (pr (showLaw l) ++ " with: "++pr (showSubts s)++" -> "++show n)   
+
+
 
 -- to Heuristics.hs -->
 -- Trivial Heuristics
