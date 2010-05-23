@@ -12,3 +12,8 @@ data Command = LoadLaws FilePath
              | Quit
              | Nop
                deriving (Show)
+
+data AssistantCommand = ListLaws
+     		      | ApplyLaw (Law, Subst)
+		      | QuitAssistant
+		      	deriving (Show)
