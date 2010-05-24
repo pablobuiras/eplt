@@ -19,15 +19,7 @@ import Data.Typeable
 import Control.Exception
 import Exceptions
 
-enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
-enumLaws ls f = case f of
-                  Var x -> mzero
-                  FTrue -> mzero
-                  FFalse -> mzero
-                  Not f -> findLaws f ls `mplus` enumLaws ls f
-                  f1 :& f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
-                  f1 :| f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
-                  f1 :== f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+import Assistant (proofAssistant)
 
 expand :: Deriv -> Prover Deriv
 expand d = let g = goal d
@@ -76,6 +68,7 @@ prover lb f = maybe (throwIO ProofNotFound) return $ prove lb f
 
 -- TODO: use haskeline
 
+{-
 stepprover :: Formula -> IO ()
 stepprover f = do putStrLn $ "Choose a posible step to prove "++(show f)
                   list <- showPosLaws (genLawPriority testLaws) f
@@ -84,7 +77,9 @@ stepprover f = do putStrLn $ "Choose a posible step to prove "++(show f)
 		  n <- getLine 
 		  i <- return $ lookup (readInt n) list
 		  if (isJust i) then stepprover (applyl f (fromJust i)) else return ()
-
+-}
+stepprover :: Formula -> IO ()
+stepprover f = proofAssistant (genLawPriority testLaws) f
 
 
 readInt :: String -> Int

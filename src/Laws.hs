@@ -2,12 +2,14 @@ module Laws where
 
 import Formula
 import Formula.Pretty
+import Subst
+
 import Control.Monad
+import Control.Monad.Logic
 import Data.Monoid
 import Data.Maybe
 import Data.List
 import Data.Ord
-import Subst
 
 type Law = (Formula, Formula)
 type LawBank = [(Law, Int)]
@@ -156,3 +158,13 @@ size (a :& b) = max (size a) (size b) + 1
 size (a :| b) = max (size a) (size b) + 1
 size (a :== b) = max (size a) (size b) + 1
 size (Not f) = size f + 1
+
+enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
+enumLaws ls f = case f of
+                  Var x -> mzero
+                  FTrue -> mzero
+                  FFalse -> mzero
+                  Not f -> findLaws f ls `mplus` enumLaws ls f
+                  f1 :& f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+                  f1 :| f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+                  f1 :== f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
