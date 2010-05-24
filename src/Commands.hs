@@ -15,7 +15,11 @@ data Command = LoadLaws FilePath
              | Nop
                deriving (Show)
 
-data AssistantCommand = ListLaws
-     		      | ApplyLaw (Law, Subst)
-		      | QuitAssistant
+data CommandAssistant = List
+     		      | Use Int
+		      | Leave
+		      | NopAssistant
+		      | BT
+		      | Qed
+		      | Goal
 		      	deriving (Show)

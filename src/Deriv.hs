@@ -25,6 +25,9 @@ goal (Deriv { formulae = f : _ }) = f
 qed :: Deriv -> Bool
 qed d = goal d == FTrue
 
+derivUnstep :: Deriv -> Deriv
+derivUnstep (Deriv { formulae = f : fs, steps = s : ss }) = Deriv { formulae = fs, steps = ss}
+
 instance Show Step where
     show (Step { law = (lhs,rhs), subst = s}) = "= { " ++ show lhs ++ " = " ++ show rhs ++ " }"
 

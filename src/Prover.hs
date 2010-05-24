@@ -19,15 +19,7 @@ import Data.Typeable
 import Control.Exception
 import Exceptions
 
-enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
-enumLaws ls f = case f of
-                  Var x -> mzero
-                  FTrue -> mzero
-                  FFalse -> mzero
-                  Not f -> findLaws f ls `mplus` enumLaws ls f
-                  f1 :& f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
-                  f1 :| f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
-                  f1 :== f2 -> findLaws f ls `mplus` enumLaws ls f1 `mplus` enumLaws ls f2
+import Assistant (proofAssistant)
 
 expand :: Deriv -> Prover Deriv
 expand d = let g = goal d
@@ -84,7 +76,9 @@ stepprover f = do putStrLn $ "Choose a posible step to prove "++(show f)
 		  n <- getLine 
 		  i <- return $ lookup (readInt n) list
 		  if (isJust i) then stepprover (applyl f (fromJust i)) else return ()
-
+-}
+stepprover :: LawBank -> Formula -> IO ()
+stepprover lb f = proofAssistant lb f
 
 
 readInt :: String -> Int
@@ -95,9 +89,6 @@ showPosLaws lb f = do mapM_ s pl
                       return pl
                         where pl = zip [1 ..] (observeAll (enumLaws lb f))
 		              s (n,(l,s))  = putStrLn (pr (showLaw l) ++ " with: "++pr (showSubts s)++" -> "++show n)   
--}
-stepprover f = putStrLn "Unimplemented."
-
 
 -- to Heuristics.hs -->
 -- Trivial Heuristics
