@@ -12,7 +12,7 @@ import System.Exit
 import Exceptions
 import Laws
 import Configure.Load
-import Configure.Options
+-- import Configure.Options
 import Commands
 import Commands.Parser
 import Prelude hiding (read, catch)
@@ -69,6 +69,6 @@ repl lbRef opts = do cmd <- read
                                             print p
                                             print st)
                                    eval (optPostQed opts f) lb) `catch` (\UserInterrupt -> putStrLn "Proof interrupted.")
-                Prove f -> stepprover f
+                Prove f -> stepprover lb f
                 Nop -> return ()
 

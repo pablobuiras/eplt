@@ -77,8 +77,8 @@ stepprover f = do putStrLn $ "Choose a posible step to prove "++(show f)
 		  i <- return $ lookup (readInt n) list
 		  if (isJust i) then stepprover (applyl f (fromJust i)) else return ()
 -}
-stepprover :: Formula -> IO ()
-stepprover f = proofAssistant (genLawPriority testLaws) f
+stepprover :: LawBank -> Formula -> IO ()
+stepprover lb f = proofAssistant lb f
 
 
 readInt :: String -> Int
