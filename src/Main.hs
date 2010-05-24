@@ -12,20 +12,26 @@ import System.Exit
 import Exceptions
 import Laws
 import Configure.Load
+import Configure.Options
 import Commands
 import Commands.Parser
 import Prelude hiding (read, catch)
 import Data.IORef
 import System.CPUTime
+import System.Console.GetOpt
+import System.Environment
 
 mySettings = setComplete noCompletion defaultSettings
 main :: IO ()
-main = do hSetBuffering stdout NoBuffering
-          lb <- loadLawsFrom "default.laws"
+main = do args <- getArgs
+          hSetBuffering stdout NoBuffering
+          let (actions, nonOptions, errors) = getOpt RequireOrder options args
+          opts <- foldl (>>=) (return startOptions) actions
+          lb <- optLaws opts
           putStr "Using these axioms: \n"
 	  showLawPriority lb
           lbRef <- newIORef lb
-          runInputT mySettings (repl lbRef)
+          runInputT mySettings (repl lbRef opts)
 
 exit = putStrLn "Bye." >> exitWith ExitSuccess
 
@@ -36,9 +42,9 @@ time m = do t1 <- getCPUTime
             putStrLn ("Proof completed in " ++ show (fromIntegral (t2 - t1)/(10^12)) ++ " second(s).")
             return a
 
-repl :: IORef LawBank -> InputT IO ()
-repl lbRef = do cmd <- read
-                lift ((readIORef lbRef >>= eval cmd) `catch` (\(SomeEPLTException e) -> print e)) >> repl lbRef
+repl :: IORef LawBank -> Options -> InputT IO ()
+repl lbRef opts = do cmd <- read
+                     lift ((readIORef lbRef >>= eval cmd) `catch` (\(SomeEPLTException e) -> print e)) >> repl lbRef opts
     where read = do m <- getInputLine "> "
                     case m of
                       Nothing -> return Quit
@@ -51,15 +57,18 @@ repl lbRef = do cmd <- read
                                   lb' <- loadLawsFrom fp
                                   writeIORef lbRef lb'
                                   putStrLn "Done."
+                Reload -> eval (LoadLaws (fileName lb)) lb
                 ShowLaws -> showLawPriority lb
                 AddLaw l -> do let lb' = addLaw l lb
                                writeIORef lbRef lb'
                                putStrLn "Law added."
-                ProveAuto f -> time (do putStr "Checking..."
-                                        modelCheck f
-                                        putStrLn "Formula is a tautology. Proving..."
-                                        (p, st) <- prover lb f
-                                        print p >> print st) `catch` (\UserInterrupt -> putStrLn "Proof interrupted.")
+                ProveAuto f -> (do time (do putStr "Checking..."
+                                            modelCheck f
+                                            putStrLn "Formula is a tautology. Proving..."
+                                            (p, st) <- prover lb f
+                                            print p
+                                            print st)
+                                   eval (optPostQed opts f) lb) `catch` (\UserInterrupt -> putStrLn "Proof interrupted.")
                 Prove f -> stepprover f
                 Nop -> return ()
 

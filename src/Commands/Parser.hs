@@ -14,7 +14,8 @@ import Data.Typeable
 -- Lexers
 -- Main lexer
 lexer = P.makeTokenParser
-        (haskellStyle { P.reservedNames = [":loadLaws", ":addLaw", ":prove", ":quit", ":showLaws", ".use", ".list", ".damn",".bt"] })
+        (haskellStyle { P.reservedNames = [":loadLaws", ":addLaw", ":prove", ":quit", ":showLaws", ":reload"] })
+
 whiteSpace = P.whiteSpace lexer
 lexeme = P.lexeme lexer
 symbol = P.symbol lexer
@@ -41,7 +42,11 @@ command = choice [loadLaws,
                   addLaw,
                   prove,
                   quit,
+                  reload,
                   fmap ProveAuto formula] >>= (eof >>) . return
+
+reload = do reserved ":reload"
+            return Reload
 
 showLaws = do reserved ":showLaws"
               return ShowLaws
@@ -65,13 +70,18 @@ parseCmd l = either (throwIO . ParserException) return . parse command l
 
 -- Proof assistant parser
 assistant = choice [use, list, leave, bt, qed, goal] >>= (eof >>) . return
+
 use = do reservedPA ".use"
       	 i <- naturalPA
 	 return (Use (fromEnum i))
 list = reservedPA ".list" >> return List
+
 leave = reservedPA ".leave" >> return Leave
+
 bt = reservedPA ".bt" >> return BT
+
 qed = reservedPA ".qed" >> return Qed
+
 goal = reservedPA ".goal" >> return Goal
 
 parseAssistant :: String -> String -> IO CommandAssistant
