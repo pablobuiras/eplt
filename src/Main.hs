@@ -1,10 +1,14 @@
 module Main where
 
-import Prover
+-- core modules
+import Assistant (proofAssistant)
+import Prover (prover)
+import ModelBuilder (modelCheck)
+
+
 import Formula.Pretty
 import System.IO
 import Control.Monad
-import ModelBuilder (modelCheck)
 import System.Console.Haskeline hiding (catch)
 import Control.Monad.Trans
 import Control.Exception
@@ -69,6 +73,12 @@ repl lbRef opts = do cmd <- read
                                             print p
                                             print st)
                                    eval (optPostQed opts f) lb) `catch` (\UserInterrupt -> putStrLn "Proof interrupted.")
-                Prove f -> stepprover lb f
+                Prove f -> do m <- proofAssistant lb f
+                              case m of
+                                Nothing -> do putStrLn "Proof assistant stopped."
+                                Just d -> do putStr "Proof completed: "
+                                             print f
+                                             print d
+                                             eval (optPostQed opts f) lb
                 Nop -> return ()
 

@@ -128,6 +128,12 @@ applyl f ((lf, rf), s) = replace lf' rf' f
 substitute :: Formula -> Subst -> Formula
 substitute f = foldr (\(s,d) -> replace (Var s) d ) f 
 
+constrainLB :: Law -> LawBank -> Maybe LawBank
+constrainLB l@(lhs,rhs) lb@(LB { laws = lsp }) =
+    do let ls = map fst lsp
+       _ <- foldr (\(a,b) m -> (match (a :== b) (lhs :== rhs) >>= unify) `mplus` m) mzero ls
+       return (lb { laws = [(l,0)] })
+
 genLawPriority :: FilePath -> [Law] -> LawBank
 genLawPriority fp ls = LB (sortBy (comparing snd) $ zip ls $ map ( \ (l,r) -> ((size r) - (size l))) ls) fp
 
@@ -147,17 +153,6 @@ ordGenericLaws = snd
 
 addLaw :: Law -> LawBank -> LawBank
 addLaw l lb@(LB { laws = ls }) = genLawPriority (fileName lb) (l : map fst ls)
-
--- to Heuristics.hs -->
-
-size :: Formula -> Int
-size FTrue = 0
-size FFalse = 0
-size (Var _) = 1
-size (a :& b) = max (size a) (size b) + 1
-size (a :| b) = max (size a) (size b) + 1
-size (a :== b) = max (size a) (size b) + 1
-size (Not f) = size f + 1
 
 enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
 enumLaws ls f = case f of

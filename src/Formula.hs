@@ -26,6 +26,17 @@ isAtom FFalse = True
 isAtom (Not _) = True
 isAtom _ = False
 
+size :: Formula -> Int
+size FTrue = 0
+size FFalse = 0
+size (Var _) = 1
+size (a :& b) = max (size a) (size b) + 1
+size (a :| b) = max (size a) (size b) + 1
+size (a :== b) = max (size a) (size b) + 1
+size (a :=> b) = max (size a) (size b) + 1
+size (a :<= b) = max (size a) (size b) + 1
+size (a := b) = max (size a) (size b) + 1
+size (Not f) = size f + 1
 
 vars :: Formula -> [String]
 vars f =

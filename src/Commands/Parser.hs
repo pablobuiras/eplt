@@ -25,7 +25,7 @@ reserved = P.reserved lexer
 
 -- Proof assistant lexer
 lexerPA = P.makeTokenParser
-        (haskellStyle { P.reservedNames = ["use", "list", "leave","bt", "qed"] })
+        (haskellStyle { P.reservedNames = ["use", "list", "leave","bt", "qed", "auto", "show"] })
 whiteSpacePA = P.whiteSpace lexerPA
 lexemePA = P.lexeme lexerPA
 symbolPA = P.symbol lexerPA
@@ -69,11 +69,18 @@ parseCmd :: String -> String -> IO Command
 parseCmd l = either (throwIO . ParserException) return . parse command l
 
 -- Proof assistant parser
-assistant = choice [use, list, leave, bt, qed, goal] >>= (eof >>) . return
+assistant = choice [use, list, leave, bt, qed, goal, auto, showDeriv] >>= (eof >>) . return
+
+showDeriv = do reservedPA "show"
+               return ShowDeriv
+
+auto = do reservedPA "auto"
+          return Auto
 
 use = do reservedPA "use"
-      	 i <- naturalPA
-	 return (Use (fromEnum i))
+      	 l <- law
+	 return (Use l)
+
 list = reservedPA "list" >> return List
 
 leave = reservedPA "leave" >> return Leave

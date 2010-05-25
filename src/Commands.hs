@@ -16,7 +16,9 @@ data Command = LoadLaws FilePath
                deriving (Show)
 
 data CommandAssistant = List
-     		      | Use Int
+                      | ShowDeriv
+                      | Auto
+     		      | Use Law
 		      | Leave
 		      | NopAssistant
 		      | BT

@@ -19,8 +19,6 @@ import Data.Typeable
 import Control.Exception
 import Exceptions
 
-import Assistant (proofAssistant)
-
 expand :: Deriv -> Prover Deriv
 expand d = let g = goal d
            in do incNodes
@@ -65,20 +63,6 @@ instance Exception ProofNotFoundException where
 
 prover :: LawBank -> Formula -> IO (Deriv, ProverState)
 prover lb f = maybe (throwIO ProofNotFound) return $ prove lb f
-
--- TODO: use haskeline
-{-
-stepprover :: Formula -> IO ()
-stepprover f = do putStrLn $ "Choose a posible step to prove "++(show f)
-                  list <- showPosLaws (genLawPriority testLaws) f
-		  --n <- return $ runInputT defaultSettings $ getInputLine "==> "
-		  putStr "==> "
-		  n <- getLine 
-		  i <- return $ lookup (readInt n) list
-		  if (isJust i) then stepprover (applyl f (fromJust i)) else return ()
--}
-stepprover :: LawBank -> Formula -> IO ()
-stepprover lb f = proofAssistant lb f
 
 
 readInt :: String -> Int

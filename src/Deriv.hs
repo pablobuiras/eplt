@@ -19,6 +19,12 @@ derivStep d f (l,s) = let f' = applyl f (l,s)
                       in d { formulae = f' : formulae d,
                              steps = Step l s : steps d }
 
+tailDeriv :: Deriv -> Deriv
+tailDeriv (Deriv fs ss) = Deriv (init fs) ss
+
+appendDeriv :: Deriv -> Deriv -> Deriv
+appendDeriv (Deriv fs1 ss1) (Deriv fs2 ss2) = Deriv (fs2 ++ fs1) (ss2 ++ ss1)
+
 goal :: Deriv -> Formula
 goal (Deriv { formulae = f : _ }) = f
 
