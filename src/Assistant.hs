@@ -2,24 +2,23 @@ module Assistant where
 
 import Commands
 import Commands.Parser
+import Deriv
 import Formula
 import Laws
-import Subst
-import Deriv
 import Prover (prover)
+import Subst
 
-import System.Console.Haskeline hiding (catch)
-import Exceptions
 import Control.Exception
-import System.IO
-import Control.Monad.Trans
 import Control.Monad
 import Control.Monad.Logic
-import Data.Maybe
-import Debug.Trace
 import Control.Monad.Maybe
-import Prelude hiding (catch)
+import Control.Monad.Trans
 import Data.Char
+import Data.Maybe
+import Exceptions
+import Prelude hiding (catch)
+import System.Console.Haskeline hiding (catch)
+import System.IO
 
 repl :: LawBank -> Deriv -> InputT IO (Maybe Deriv)
 repl lb d = do cmd <- read
@@ -47,7 +46,13 @@ repl lb d = do cmd <- read
 		      	      	    List -> lift $ do putStrLn "Applicable laws:"
                                                       m <- userChoice laws
                                                       maybe (return d) (chooseStep d (goal d)) m
-		      	      	    BT -> return (derivUnstep d)
+		      	      	    BT -> lift $ case hasStepDeriv d of
+				       	       	      True -> do putGoal d'
+						      	      	 return d'
+								 where d' = derivUnstep d
+						      False -> do putStrLn "Cannot backtrace."
+						      	       	  putGoal d
+								  return d
 		      	      	    NopAssistant -> return d
 				    Goal -> do lift $ putGoal d
 				    	       return d
@@ -56,7 +61,7 @@ repl lb d = do cmd <- read
 userChoice :: Show a => [a] -> IO (Maybe a)
 userChoice [] = return Nothing
 userChoice [l] = return (Just l)
-userChoice ls = do mapM (\(i,s) -> putStrLn $ "rule " ++ show i ++ " : " ++ show s) $ zip [0..] ls
+userChoice ls = do mapM (\(i,s) -> putStrLn $ "Rule " ++ show i ++ " : " ++ show s) $ zip [0..] ls
                    line <- runInputT defaultSettings $ getInputLine "Enter a number (anything else aborts): "
                    case line of
                      Nothing -> return Nothing
@@ -65,7 +70,7 @@ userChoice ls = do mapM (\(i,s) -> putStrLn $ "rule " ++ show i ++ " : " ++ show
                                   return (if (all isDigit l && n < length ls) then Just (ls !! n) else Nothing)
 
 showNumberedList :: Show a => [a] -> IO ()
-showNumberedList l = do putStrLn "Applicable laws :"
+showNumberedList l = do putStrLn "Applicable laws:"
 	             	mapM (\(i,s) -> putStrLn $ "rule " ++ show i ++ " : " ++ show s) $ zip [0..] l
 			return ()
 
