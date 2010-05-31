@@ -128,14 +128,37 @@ applyl f ((lf, rf), s) = replace lf' rf' f
 substitute :: Formula -> Subst -> Formula
 substitute f = foldr (\(s,d) -> replace (Var s) d ) f 
 
+mapSnd :: (a -> b) -> [(c,a)] -> [(c,b)]
+mapSnd f = map (\(x,y) -> (x, f y))
+
+mapFst :: (a -> b) -> [(a,c)] -> [(b,c)]
+mapFst f = map (\(x,y) -> (f x, y))
+
+expand :: Formula -> [Law]
+expand f@(_ :== _) =  let lvl = expandLvl f
+                      in nub $ lvl ++ concatMap (\(lhs,rhs) -> let ls = expand rhs
+                                                               in mapFst (lhs :==) ls ++ mapSnd (lhs :==) ls) lvl
+expand f = []
+
+expandLvl :: Formula -> [Law]
+expandLvl = mapSnd (foldr1 (:==)) . pivots . breakEqs
+
+pivots [] = []
+pivots (f:fs) = (f,fs) : mapSnd (f:) (pivots fs)
+
+breakEqs f = case f of
+                         lhs :== rhs -> breakEqs lhs ++ breakEqs rhs
+                         _ -> [f]
+
 constrainLB :: Law -> LawBank -> Maybe LawBank
 constrainLB l@(lhs,rhs) lb@(LB { laws = lsp }) =
     do let ls = map fst lsp
        _ <- foldr (\(a,b) m -> (match (a :== b) (lhs :== rhs) >>= unify) `mplus` m) mzero ls
        return (lb { laws = [(l,0)] })
 
-genLawPriority :: FilePath -> [Law] -> LawBank
-genLawPriority fp ls = LB (sortBy (comparing snd) $ zip ls $ map ( \ (l,r) -> ((size r) - (size l))) ls) fp
+genLawPriority :: FilePath -> [Either Law Formula] -> LawBank
+genLawPriority fp lf = LB (sortBy (comparing snd) $ zip ls $ map ( \ (l,r) -> ((size r) - (size l))) ls) fp
+    where ls = concatMap (either (:[]) expand) lf
 
 showLawPriority :: LawBank -> IO ()
 showLawPriority (LB { laws = lb }) = do  putStr $ (pr "Law") ++ "\t Priority\n"
@@ -151,8 +174,13 @@ pr s = s ++ take w (repeat ' ')
 
 ordGenericLaws = snd
 
+lawToFormula (lhs,rhs) = lhs :== rhs
+
+formulaToLaw f@(lhs :== rhs) = Just f
+formulaToLaw _ = Nothing
+
 addLaw :: Law -> LawBank -> LawBank
-addLaw l lb@(LB { laws = ls }) = genLawPriority (fileName lb) (l : map fst ls)
+addLaw l lb@(LB { laws = ls }) = genLawPriority (fileName lb) (Left l : map (Left . fst) ls)
 
 enumLaws :: (Functor m, MonadLogic m) => LawBank -> Formula -> m (Law, Subst)
 enumLaws ls f = case f of

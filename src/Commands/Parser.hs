@@ -1,7 +1,7 @@
 module Commands.Parser (command, parseCmd, assistant, parseAssistant) where
 
 import Commands
-import Formula.Parser (law, formula, ParserException(..))
+import Formula.Parser (lawPrim, formula, ParserException(..))
 import Text.ParserCombinators.Parsec
 import qualified Text.ParserCombinators.Parsec.Token as P
 import Text.ParserCombinators.Parsec.Expr
@@ -56,7 +56,7 @@ loadLaws = do reserved ":loadLaws"
               return (LoadLaws fp)
 
 addLaw = do reserved ":addLaw"
-            l <- law
+            l <- lawPrim
             return (AddLaw l)
 
 prove = do reserved ":prove"
@@ -78,7 +78,7 @@ auto = do reservedPA "auto"
           return Auto
 
 use = do reservedPA "use"
-      	 l <- law
+      	 l <- lawPrim
 	 return (Use l)
 
 list = reservedPA "list" >> return List

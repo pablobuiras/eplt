@@ -11,7 +11,7 @@ import Control.Monad.Logic.Class
 import Control.Monad.Logic
 import ProverMonad
 import Debug.Trace
-import Laws
+import Laws hiding (expand)
 import Subst
 import Deriv
 

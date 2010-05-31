@@ -39,10 +39,13 @@ term = parens formula
        <|> (reserved "false" >> return FFalse)
        <?> "proposition"
 
-law = do f <- formula
-         reservedOp "->"
-         f' <- formula
-         return (f, f')
+
+lawPrim = do f <- formula
+             reservedOp "->"
+             f' <- formula
+             return (f, f')
+
+law = Text.ParserCombinators.Parsec.try (fmap Left lawPrim) <|> fmap Right formula
 
 -- IO interface
 data ParserException = ParserException ParseError

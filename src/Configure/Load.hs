@@ -11,5 +11,5 @@ import Control.Exception
 loadLawsFrom :: FilePath -> IO LawBank
 loadLawsFrom f = readFile f >>= fmap (genLawPriority f) . mapM plaw . lines
 
-plaw :: String -> IO Law
+plaw :: String -> IO (Either Law Formula)
 plaw l = either (throw . ParserException) return $ parse law "<load.laws>" l
