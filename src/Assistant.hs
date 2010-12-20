@@ -36,13 +36,14 @@ repl lb d = do cmd <- read
                                                                                                         Handler (\(SomeEPLTException e) -> print e >> return d)]
                                     ShowDeriv -> lift (print d >> return d)
                                     Qed -> return d -- TODO: make this more useful
-		     	      	    Use l -> lift $ case constrainLB l lb of
+		     	      	    {- Use l -> lift $ case constrainLB l lb of
                                                        Nothing -> do putStrLn "No such law exists."
                                                                      return d
                                                        Just lb' ->
                                                            do let choices = observeAll $ enumLaws lb' (goal d)
                                                               m <- userChoice choices
                                                               maybe (return d) (chooseStep d (goal d)) m
+				    -}
 		      	      	    List -> lift $ do putStrLn "Applicable laws:"
                                                       m <- userChoice laws
                                                       maybe (return d) (chooseStep d (goal d)) m

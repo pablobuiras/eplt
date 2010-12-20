@@ -26,9 +26,9 @@ reservedOp = P.reservedOp lexer
 -- Parser
 var = fmap Var identifier <?> "variable"
 table = [[Prefix ((reservedOp "~" >> return Not) <?> "negation")],
-         [op "/\\" (:&) AssocLeft, op "\\/" (:|) AssocLeft],
+         [{-op "/\\" (:&) AssocLeft, op "\\/" (:|) AssocLeft-}],
          [op "=>" (:=>) AssocRight, op "<=" (:<=) AssocLeft],
-         [op "==" (:==) AssocLeft, op "=" (:=) AssocNone]]
+         [{-op "==" (:==) AssocLeft,-} op "=" (:=) AssocNone]]
         where op s f =
                   Infix ((reservedOp s >> return f) <?> "operator")
 

@@ -3,15 +3,19 @@ module Formula.Pretty where
 import Formula
 import Text.PrettyPrint.HughesPJ
 
+--import Data.Set (Set, deleteFindMin)
+--import MSet
+
+
 data Context = And | Or | Impl | Conseq | Equiv | Top
              deriving (Eq)
 
 contextOf :: Formula -> Context
-contextOf (_ :& _) = And
-contextOf (_ :| _) = Or
+contextOf (FAnd _) = And
+contextOf (FOr  _) = Or
 contextOf (_ :=> _) = Impl
 contextOf (_ :<= _) = Conseq
-contextOf (_ :== _) = Equiv
+contextOf (FEquiv _) = Equiv
 contextOf (_ := _) = Equiv
 contextOf _ = Top
 
@@ -39,11 +43,15 @@ pp :: Formula -> Doc
 pp (Var v) = text v
 pp FTrue = text "true"
 pp FFalse = text "false"
-pp (f1 :& f2) = binOp (text "/\\") (ppNest And f1) (ppNest And f2)
-pp (f1 :| f2) = binOp (text "\\/") (ppNest Or f1) (ppNest Or f2)
+pp (FAnd s) = if (null s') then (ppNest And f) else binOp (text "/\\") (ppNest And f) (pp (FAnd s'))
+              where (f,s') = (head s,tail s)
+pp (FOr s) = if (null s') then (ppNest Or f) else binOp (text "\\/") (ppNest Or f) (pp (FOr s'))
+              where (f,s') = (head s,tail s)
+pp (FEquiv s) = if (null s') then (ppNest Equiv f) else binOp (text "==") (ppNest Equiv f) (pp (FEquiv s'))
+              where (f,s') = (head s,tail s)
+
 pp (f1 :=> f2) = binOp (text "=>") (ppNest Top f1) (ppNest Impl f2)
 pp (f1 :<= f2) = binOp (text "<=") (ppNest Conseq f1) (ppNest Top f2)
-pp (f1 :== f2) = binOp (text "==") (ppNest Equiv f1) (ppNest Equiv f2)
 pp (f1 := f2) = binOp (text "=") (ppNest Equiv f1) (ppNest Equiv f2)
 pp (Not f) = char '~' <> parens (ppNest Top f)
 
@@ -53,3 +61,4 @@ ppNest c f | not (isAtom f) && contextOf f <= c = parens (pp f)
 
 instance Show Formula where
     show = render . pp
+    

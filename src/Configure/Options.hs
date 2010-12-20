@@ -27,13 +27,13 @@ options =
               "FILE")
              "Specify laws file.",
 
-      Option "e" ["extend-lawbank"]
+{-      Option "e" ["extend-lawbank"]
              (NoArg
               (\opt -> return opt { optPostQed = \f -> case f of
                                                          lhs :== rhs -> AddLaw (lhs,rhs)
                                                          _ -> AddLaw (f,FTrue) }))
              "Enable automatic adding of theorems to the law bank.",
-
+-}
       Option "g" ["gustavo-mode"]
              (NoArg
               (\opt -> return opt { optGustavoMode = True }))

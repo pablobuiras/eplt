@@ -1,14 +1,1 @@
-a \/ true -> true
-a \/ a -> a
-a \/ (b \/ c) == (a \/ b) \/ c
-a \/ b -> b \/ a
-a /\ b == a == b == a \/ b
-a /\ a -> a
-a /\ true -> a
-a /\ b -> b /\ a
-a /\ (b /\ c) == (a /\ b) /\ c
-a \/ (b == c) == a \/ b == a \/ c
-a == a -> true
-a == (b == c) -> (a == b) == c
-(a == b) == c -> a == (b == c)
-(a == b) -> (b == a)
+a => b -> ~ b => ~ a

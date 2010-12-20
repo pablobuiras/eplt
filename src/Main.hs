@@ -5,6 +5,7 @@ import Assistant (proofAssistant)
 import Prover (prover)
 import ModelBuilder (modelCheck)
 
+import Formula
 
 import Formula.Pretty
 import System.IO

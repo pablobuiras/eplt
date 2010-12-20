@@ -24,12 +24,12 @@ evalF :: Val -> Formula -> Maybe Bool
 evalF v FTrue = return True
 evalF v FFalse = return False
 evalF v (Var x) = M.lookup x v
-evalF v (f1 :& f2) = liftM2 (&&) (evalF v f1) (evalF v f2)
-evalF v (f1 :| f2) = liftM2 (||) (evalF v f1) (evalF v f2)
-evalF v (f1 :=> f2) = evalF v (Not f1 :| f2)
-evalF v (f1 :<= f2) = evalF v (Not f2 :| f1)
-evalF v (f1 :== f2) = liftM2 (==) (evalF v f1) (evalF v f2)
-evalF v (f1 := f2) = liftM2 (==) (evalF v f1) (evalF v f2)
+--evalF v (f1 :& f2) = liftM2 (&&) (evalF v f1) (evalF v f2)
+--evalF v (f1 :| f2) = liftM2 (||) (evalF v f1) (evalF v f2)
+--evalF v (f1 :=> f2) = evalF v (Not f1 :| f2)
+--evalF v (f1 :<= f2) = evalF v (Not f2 :| f1)
+--evalF v (f1 :== f2) = liftM2 (==) (evalF v f1) (evalF v f2)
+--evalF v (f1 := f2) = liftM2 (==) (evalF v f1) (evalF v f2)
 evalF v (Not f) = fmap not (evalF v f)
 
 {-|

@@ -11,7 +11,7 @@ import Control.Monad.Logic.Class
 import Control.Monad.Logic
 import ProverMonad
 import Debug.Trace
-import Laws hiding (expand)
+import Laws --hiding (expand)
 import Subst
 import Deriv
 
@@ -87,6 +87,6 @@ testH :: Heuristics
 testH = (h1, h2, h3)
     where h1 (PS { visited = fs}) _ lb = if (unit fs) then lb else lb { laws = filter ((<1) . ordGenericLaws) (laws lb) } -- he1
           h2 _ _ ls = ls
-          h3 _ _ = sortBy (comparing (size . goal))
+          h3 _ _ = sortBy (comparing (fsize . goal))
 	  unit (_:[]) = True
 	  unit _      = False
