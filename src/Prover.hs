@@ -34,7 +34,7 @@ pair f g ~(x,y) = (f x, g y)
 
 
 initState f =  PS { expanded = 0, depth = 0, visited = [f] }
-initEnv =  PE { lawBank = undefined, heuristics = testH }
+initEnv =  PE { lawBank = undefined, heuristics = idH }
 
 --testProver m = runProver initState initEnv $ m
 
@@ -81,12 +81,14 @@ idH = (h1, h2, h3)
     where h1 _ _ lb = lb
           h2 _ _ ls = ls
           h3 _ _ cs = cs
+          
+ftest = FEquiv [FAnd [Var "x", Var "x", Var "x"], Var "x"]
 
 -- Test Heuristics
-testH :: Heuristics
-testH = (h1, h2, h3)
-    where h1 (PS { visited = fs}) _ lb = if (unit fs) then lb else lb { laws = filter ((<1) . ordGenericLaws) (laws lb) } -- he1
-          h2 _ _ ls = ls
-          h3 _ _ = sortBy (comparing (fsize . goal))
-	  unit (_:[]) = True
-	  unit _      = False
+--testH :: Heuristics
+--testH = (h1, h2, h3)
+--    where h1 (PS { visited = fs}) _ lb = if (unit fs) then lb else lb { laws = filter ((<1) . ordGenericLaws) (laws lb) } -- he1
+--          h2 _ _ ls = ls
+--          h3 _ _ = sortBy (comparing (fsize . goal))
+--	  unit (_:[]) = True
+--	  unit _      = False
