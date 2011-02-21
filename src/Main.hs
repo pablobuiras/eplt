@@ -67,9 +67,9 @@ repl lbRef opts = do cmd <- read
                 AddLaw l -> do let lb' = addLaw l lb
                                writeIORef lbRef lb'
                                putStrLn "Law added."
-                ProveAuto f -> (do time (do putStr "Model Checking is disabled ...\n"
-                                            --modelCheck f
-                                            --putStrLn "Formula is a tautology. Proving..."
+                ProveAuto f -> (do time (do putStr "Checking ...\n"
+                                            modelCheck f
+                                            putStrLn "Formula is a tautology. Proving..."
                                             (p, st) <- prover lb f
                                             print p
                                             print st)
