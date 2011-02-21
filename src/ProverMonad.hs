@@ -11,7 +11,7 @@ import Laws
 import Subst
 
 type Heuristics = (ProverState -> Formula -> LawBank -> LawBank,
-                   ProverState -> Formula -> [(Law,Subst)] -> [(Law,Subst)],
+                   ProverState -> Formula -> [(Law,Subst, ZFormula)] -> [(Law,Subst, ZFormula)],
                    ProverState -> Formula -> [Deriv] -> [Deriv])
 
 data ProverState = PS { expanded :: Int, depth :: Int, visited :: [Formula] }
@@ -40,7 +40,7 @@ class MonadLogic m => MonadProver m d | m -> d where
    prune :: d -> m d
    constrainLaws :: d -> m a -> m a
    applyDerivH :: d -> m d -> m d
-   applyLawH :: d -> m (Law,Subst) -> m (Law,Subst)
+   applyLawH :: d -> m (Law,Subst, ZFormula) -> m (Law,Subst, ZFormula)
    applyAll :: ([a] -> [a]) -> m a -> m a
    getLawBank :: m LawBank
    

@@ -24,7 +24,7 @@ expand d = let g = goal d
            in do incNodes
                  applyDerivH d $ fmap (derivStep d g) 
                                       (do lb <- constrainLaws d getLawBank
-                                          applyLawH d (enumLaws lb g))
+                                          applyLawH d (enumLaws lb (mkZFormula g)))
 
 allit :: Deriv -> Prover Deriv
 allit d = return d `mplus` (expand d >>- prune >>- allit)
@@ -62,27 +62,30 @@ instance Exception ProofNotFoundException where
     fromException = epltExceptionFromException
 
 prover :: LawBank -> Formula -> IO (Deriv, ProverState)
-prover lb f = maybe (throwIO ProofNotFound) return $ prove lb f
+prover lb f = maybe (throwIO ProofNotFound) return $ prove lb (normalize f)
 
 
 readInt :: String -> Int
 readInt = read
 
-showPosLaws :: LawBank -> Formula -> IO ([(Int,(Law,Subst))])
+showPosLaws :: LawBank -> Formula -> IO ([(Int,(Law,Subst, ZFormula))])
 showPosLaws lb f = do mapM_ s pl
                       return pl
-                        where pl = zip [1 ..] (observeAll (enumLaws lb f))
-		              s (n,(l,s))  = putStrLn (pr (showLaw l) ++ " with: "++pr (showSubts s)++" -> "++show n)   
+                        where pl = zip [1 ..] (observeAll (enumLaws lb (mkZFormula f)))
+		              s (n,(l,s, _))  = putStrLn (pr (showLaw l) ++ " with: "++pr (showSubts s)++" -> "++show n)   
 
 -- to Heuristics.hs -->
 -- Trivial Heuristics
 idH :: Heuristics
 idH = (h1, h2, h3)
-    where h1 _ _ lb = lb
-          h2 _ _ ls = ls
-          h3 _ _ cs = cs
+    where h1 (PS { visited = fs}) _ lb = if (unit fs) then lb else lb { laws = filter ((<1) . ordGenericLaws) (laws lb) }
+          h2 _ _ = id
+          h3 _ _ = sortBy (comparing (fsize . goal))
+          unit (_:[]) = True
+	  unit _      = False
+
           
-ftest = FEquiv [FAnd [Var "x", Var "x", Var "x"], Var "x"]
+ftest = FEquiv [FAnd [Var "x", Var "x", Var "x", Var "x", Var "x", Var "x"], FAnd [Var "x", FTrue]]
 
 -- Test Heuristics
 --testH :: Heuristics

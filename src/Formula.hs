@@ -4,6 +4,7 @@ module Formula where
 import Data.List
 import Maybe
 import Math.Combinat.Partitions
+import Control.Monad
 
 data Formula = Var String
              | FTrue | FFalse
@@ -89,6 +90,13 @@ fill (CFOrPart (pfs,diff) : cs , _) = fill (cs, FOr (pfs++diff))
 fill (CFEquivPart (pfs,diff) : cs , _) = fill (cs, FEquiv (pfs++diff))
 fill _                               = error "Malformed ZFormula"
 
+reconstruct :: ZFormula -> Formula -> Formula
+reconstruct (CFAndPart (pfs,diff) : cs , _) f   = (normalize.fill) (CFAndPart ([f],diff) : cs , undefined)
+reconstruct (CFOrPart (pfs,diff) : cs , _) f    = (normalize.fill) (CFOrPart ([f],diff) : cs , undefined)
+reconstruct (CFEquivPart (pfs,diff) : cs , _) f = (normalize.fill) (CFEquivPart ([f],diff) : cs , undefined)
+reconstruct ([], _) f                           = normalize f
+reconstruct  _      _                           = error "Error in reconstruct"
+
 getFormula :: ZFormula -> Formula
 getFormula (CFAndPart (pfs,_):cs, _ ) = FAnd pfs
 getFormula (CFOrPart (pfs,_):cs, _ ) = FOr pfs
@@ -110,9 +118,9 @@ fsize :: Formula -> Int
 fsize FTrue = 0
 fsize FFalse = 0
 fsize (Var _) = 1
-fsize (FAnd   s) = (foldr max 0 (map fsize s)) + 1
-fsize (FOr    s) = (foldr max 0 (map fsize s)) + 1
-fsize (FEquiv s) = (foldr max 0 (map fsize s)) + 1
+fsize (FAnd   s) = (foldr max 0 (map fsize s)) + length s
+fsize (FOr    s) = (foldr max 0 (map fsize s)) + length s
+fsize (FEquiv s) = (foldr max 0 (map fsize s)) + length s
 fsize (a :=> b) = max (fsize a) (fsize b) + 1
 fsize (a :<= b) = max (fsize a) (fsize b) + 1
 fsize (a := b) = max (fsize a) (fsize b) + 1
@@ -132,9 +140,6 @@ vars f =
       f1 :<= f2 -> vars f1 `union` vars f2
       f1 := f2 -> vars f1 `union` vars f2
       Not f -> vars f
-
-fore = FOr [(Var "r"), (FAnd [Var "b", Var "a", FOr [Var "c", Var "d"] ])]
---fore2 = FOr [(FAnd [Var "a", Var "b", FOr [Var "d", Var "c"]]), (Var "r")]
 
 
 replace :: Formula -> Formula -> Formula -> Formula
@@ -171,28 +176,52 @@ compF op fs1 fs2 | length(fs1) /= length(fs2) = False
                             $ permutations fs2
                                   where n = length fs1
                                 
+
+-- Normalize functions
+
+normalize :: Formula -> Formula
+normalize = flatten.fromJust.purify
   
 purify :: Formula -> Maybe Formula
-
 purify (FAnd fs) = f fs'
                    where fs' = catMaybes $ map purify fs
 		         f []   = Nothing
 		         f [x'] = Just x'
 		         f  z   = Just $ FAnd z
-
 purify (FOr fs) = f fs'
                    where fs' = catMaybes $ map purify fs
 		         f []   = Nothing
 		         f [x'] = Just x'
 		         f  z   = Just $ FOr z
-			 
 purify (FEquiv fs) = f fs'
                      where fs'    = catMaybes $ map purify fs
 		           f []   = Nothing
 		           f [x'] = Just x'
-		           f  z   = Just $ FAnd z
+		           f  z   = Just $ FEquiv z
 			 
 purify x = Just x
 
-parts n xs = filter ((==xs).concat) $ map (map (snd.unzip).reverse) $ filter ((== n) . length) $ partitionMultiset $ (zip [1..] xs)
+flatten :: Formula -> Formula
+flatten (FAnd fs) = if (any isAnd fs) then flatten $ FAnd $ concatMap fromAnd fs else FAnd $ map flatten fs 
+                    where isAnd (FAnd _) = True
+                          isAnd _        = False
+                          fromAnd (FAnd x) = x
+                          fromAnd f         = [f]
+flatten (FOr fs) = if (any isOr fs) then flatten $ FOr $ concatMap fromOr fs else FOr $ map flatten fs 
+                    where isOr (FOr _) = True
+                          isOr _       = False
+                          fromOr (FOr x) = x
+                          fromOr f       = [f]
+flatten (FEquiv fs) = if (any isEquiv fs) then flatten $ FEquiv $ concatMap fromEquiv fs else FEquiv $ map flatten fs 
+                    where isEquiv (FEquiv _) = True
+                          isEquiv _          = False
+                          fromEquiv (FEquiv x) = x
+                          fromEquiv f          = [f]
+flatten (f1 :=> f2) = (flatten f1) :=> (flatten f2)
+flatten f = f
 
+-- Auxiliry functions
+
+parts n xs = filter ((==xs).concat) $ map (map (snd.unzip).reverse) $ filter ((== n) . length) $ partitionMultiset $ (zip [1..] xs)
+expFormulas op fs = map op (filter (not.null) $ powerset fs)
+powerset s = filterM (const [True, False]) s

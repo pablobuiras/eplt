@@ -14,8 +14,8 @@ data Deriv = Deriv { formulae :: [Formula], steps :: [Step] }
 startDeriv :: Formula -> Deriv
 startDeriv f = Deriv { formulae = [f], steps = [] }
 
-derivStep :: Deriv -> Formula -> (Law,Subst) -> Deriv
-derivStep d f (l,s) = let f' = applyl f (l,s)
+derivStep :: Deriv -> Formula -> (Law,Subst, ZFormula) -> Deriv
+derivStep d f (l,s,zf) = let f' = applyl f (l,s,zf)
                       in d { formulae = f' : formulae d,
                              steps = Step l s : steps d }
 
