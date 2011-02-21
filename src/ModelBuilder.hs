@@ -24,13 +24,15 @@ evalF :: Val -> Formula -> Maybe Bool
 evalF v FTrue = return True
 evalF v FFalse = return False
 evalF v (Var x) = M.lookup x v
---evalF v (f1 :& f2) = liftM2 (&&) (evalF v f1) (evalF v f2)
---evalF v (f1 :| f2) = liftM2 (||) (evalF v f1) (evalF v f2)
---evalF v (f1 :=> f2) = evalF v (Not f1 :| f2)
---evalF v (f1 :<= f2) = evalF v (Not f2 :| f1)
---evalF v (f1 :== f2) = liftM2 (==) (evalF v f1) (evalF v f2)
---evalF v (f1 := f2) = liftM2 (==) (evalF v f1) (evalF v f2)
+evalF v (FAnd fs) = mfoldOp (&&) True $ map (evalF v) fs
+evalF v (FOr fs) = mfoldOp (||) False $ map (evalF v) fs
+evalF v (f1 :=> f2) = evalF v (FOr [Not f1, f2])
+evalF v (f1 :<= f2) = evalF v (FOr [Not f2, f1])
+evalF v (FEquiv fs) = mfoldOp (==) True $ map (evalF v) fs
+evalF v (f1 := f2) = liftM2 (==) (evalF v f1) (evalF v f2)
 evalF v (Not f) = fmap not (evalF v f)
+
+mfoldOp op z ls = fmap (foldr op z) $ sequence ls
 
 {-|
   The function @enumCandidates@ enumerates all possible valuations for a set of variables (given as a list of strings).
