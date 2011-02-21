@@ -44,9 +44,12 @@ repl lb d = do cmd <- read
                                                               m <- userChoice choices
                                                               maybe (return d) (chooseStep d (goal d)) m
 				    -}
+                                    {-
 		      	      	    List -> lift $ do putStrLn "Applicable laws:"
                                                       m <- userChoice laws
-                                                      maybe (return d) (chooseStep d (goal d)) m
+                                                      undefined
+                                                      --maybe (return d) (chooseStep d (goal d)) m
+                                    -}
 		      	      	    BT -> lift $ case hasStepDeriv d of
 				       	       	      True -> do putGoal d'
 						      	      	 return d'
@@ -57,7 +60,7 @@ repl lb d = do cmd <- read
 		      	      	    NopAssistant -> return d
 				    Goal -> do lift $ putGoal d
 				    	       return d
-			laws = observeAll $ enumLaws lb (goal d)
+			laws = observeAll $ enumLaws lb (mkZFormula (goal d))
 
 userChoice :: Show a => [a] -> IO (Maybe a)
 userChoice [] = return Nothing
@@ -78,9 +81,10 @@ showNumberedList l = do putStrLn "Applicable laws:"
 putGoal :: Deriv -> IO ()
 putGoal d = putStrLn $ "Goal : " ++ show (goal d)
 
+{-
 chooseStep :: Deriv -> Formula -> (Law, Subst) -> IO Deriv
 chooseStep d f l = do let d' = derivStep d f l
                       putGoal d'
                       return d'
-
+-}
 proofAssistant lb f = runInputT defaultSettings $ outputStrLn "Starting proof by hand..." >> outputStrLn ("Goal : " ++ show f) >> repl lb (startDeriv f)

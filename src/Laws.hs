@@ -163,7 +163,7 @@ lawPriority :: Law -> Int
 lawPriority (l,r) = (fsize r) - (fsize l)
 
 genLawPriority :: FilePath -> [Either Law Formula] -> LawBank
-genLawPriority fp lf = LB (map (\l -> (l,1)) (lefts lf)) fp
+genLawPriority fp lf = LB (map (\l -> (l,lawPriority l)) (lefts lf)) fp
 
 showLawPriority :: LawBank -> IO ()
 showLawPriority (LB { laws = lb }) = do  putStr $ (pr "Law") ++ "\t Priority\n"
