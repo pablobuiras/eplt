@@ -3,8 +3,7 @@ a \/ ~(a) -> true
 a \/ true -> true
 a /\ b == a == b -> a \/ b
 a \/ b == a == b -> a /\ b
-true == false -> false
-true == true -> true
+false -> ~(true)
 a /\ a -> a
 a \/ a -> a
 a == true -> a

@@ -94,8 +94,8 @@ reconstruct :: ZFormula -> Formula -> Formula
 reconstruct (CFAndPart (pfs,diff) : cs , _) f   = (normalize.fill) (CFAndPart ([f],diff) : cs , undefined)
 reconstruct (CFOrPart (pfs,diff) : cs , _) f    = (normalize.fill) (CFOrPart ([f],diff) : cs , undefined)
 reconstruct (CFEquivPart (pfs,diff) : cs , _) f = (normalize.fill) (CFEquivPart ([f],diff) : cs , undefined)
-reconstruct ([], _) f                           = normalize f
-reconstruct  _      _                           = error "Error in reconstruct"
+--reconstruct ([], _) f                           = normalize f
+reconstruct (cs,_) f                           =  (normalize.fill) (cs,f)--error "Error in reconstruct"
 
 getFormula :: ZFormula -> Formula
 getFormula (CFAndPart (pfs,_):cs, _ ) = FAnd pfs

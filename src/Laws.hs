@@ -190,7 +190,7 @@ addLaw :: Law -> LawBank -> LawBank
 addLaw l lb@(LB { laws = ls }) = genLawPriority (fileName lb) (Left l : map (Left . fst) ls)
 
 enumLaws :: (Functor m , MonadLogic m) => LawBank -> ZFormula -> m (Law, Subst, ZFormula)
-enumLaws ls zf =  (if (null $ fst zf) then findLaws zf ls else mzero)
+enumLaws ls zf =  findLaws zf ls
                   `mplus`
                   case getFormula zf of
                   Not f -> findLaws zf' ls `mplus` enumLaws ls zf'
@@ -201,8 +201,8 @@ enumLaws ls zf =  (if (null $ fst zf) then findLaws zf ls else mzero)
                             `mplus` msum (map (enumLaws ls . (chooseOr zf)) [0.. (length s)-1])
                   FEquiv s -> msum (map (\f -> findLaws (chooseEquivPart zf f) ls) (expFormulas FEquiv s))
                             `mplus` msum (map (enumLaws ls . (chooseEquiv zf)) [0.. (length s)-1])
-                  f1 :=> f2 -> findLaws zf1' ls `mplus` enumLaws ls zf1' `mplus`
-                               findLaws zf2' ls `mplus` enumLaws ls zf2'
+                  f1 :=> f2 -> (findLaws zf1' ls) `mplus` (findLaws zf2' ls) `mplus`  
+                                enumLaws ls zf1' `mplus` enumLaws ls zf2'
                             where zf1' = (chooseImpLeft zf)
                                   zf2' = (chooseImpRight zf)
                   _     -> mzero
