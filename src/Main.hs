@@ -34,8 +34,8 @@ main = do args <- getArgs
           opts <- foldl (>>=) (return startOptions) actions
           lb <- optLaws opts
           putStr "Using these axioms: \n"
-	  showLawPriority testBank
-          lbRef <- newIORef testBank
+	  showLawPriority lb
+          lbRef <- newIORef lb
           runInputT mySettings (repl lbRef opts)
 
 exit = putStrLn "Bye." >> exitWith ExitSuccess
