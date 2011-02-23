@@ -1,6 +1,7 @@
 a == a -> true
 a \/ ~(a) -> true
 a \/ true -> true
+a \/ false -> a
 a /\ b == a == b -> a \/ b
 a \/ b == a == b -> a /\ b
 false -> ~(true)
