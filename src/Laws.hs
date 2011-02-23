@@ -145,15 +145,16 @@ pivots (f:fs) = (f,fs) : mapSnd (f:) (pivots fs)
 breakEqs f = case f of
                          lhs :== rhs -> breakEqs lhs ++ breakEqs rhs
                          _ -> [f]
+-}
 
 constrainLB :: Law -> LawBank -> Maybe LawBank
 constrainLB l@(lhs,rhs) lb@(LB { laws = lsp }) =
     do let ls = map fst lsp
-       _ <- foldr (\(a,b) m -> (match (a :== b) (lhs :== rhs) >>= unify) `mplus` m) mzero ls
+       _ <- foldr (\(a,b) m -> (match (FEquiv [a, b]) (FEquiv [lhs, rhs]) >>= unify) `mplus` m) mzero ls
        return (lb { laws = [(l,0)] })
 
 
-
+{-
 genLawPriority :: FilePath -> [Either Law Formula] -> LawBank
 genLawPriority fp lf = LB (sortBy (comparing snd) $ zip ls $ map ( \(l,r) -> ((fsize r) - (fsize l))) ls) fp
     where ls = concatMap (either (:[]) expand) lf

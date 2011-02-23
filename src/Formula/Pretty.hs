@@ -61,4 +61,3 @@ ppNest c f | not (isAtom f) && contextOf f <= c = parens (pp f)
 
 instance Show Formula where
     show = render . pp
-    

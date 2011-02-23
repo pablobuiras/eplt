@@ -20,6 +20,11 @@ import Prelude hiding (catch)
 import System.Console.Haskeline hiding (catch)
 import System.IO
 
+newtype ZFProxy = ZFProxy { unZFProxy :: ZFormula }
+
+instance Show ZFProxy where
+  show (ZFProxy zf) = show (getFormula zf)
+
 repl :: LawBank -> Deriv -> InputT IO (Maybe Deriv)
 repl lb d = do cmd <- read
       	       (lift (eval lb d cmd)) >>= maybe (return Nothing) (\d -> if qed d then return (Just d) else repl lb d)
@@ -36,20 +41,16 @@ repl lb d = do cmd <- read
                                                                                                         Handler (\(SomeEPLTException e) -> print e >> return d)]
                                     ShowDeriv -> lift (print d >> return d)
                                     Qed -> return d -- TODO: make this more useful
-		     	      	    {- Use l -> lift $ case constrainLB l lb of
+		     	      	    Use l -> lift $ case constrainLB l lb of
                                                        Nothing -> do putStrLn "No such law exists."
                                                                      return d
                                                        Just lb' ->
-                                                           do let choices = observeAll $ enumLaws lb' (goal d)
-                                                              m <- userChoice choices
-                                                              maybe (return d) (chooseStep d (goal d)) m
-				    -}
-                                    {-
+                                                           do let choices = observeAll $ enumLaws lb' (mkZFormula (goal d))
+                                                              m <- userChoice (map (\(a,b,c) -> (a,b,ZFProxy c)) choices)
+                                                              maybe (return d) (chooseStep d (goal d) . (\(a,b,c) -> (a,b,unZFProxy c))) m
 		      	      	    List -> lift $ do putStrLn "Applicable laws:"
-                                                      m <- userChoice laws
-                                                      undefined
-                                                      --maybe (return d) (chooseStep d (goal d)) m
-                                    -}
+                                                      m <- userChoice (map (\(a,b,c) -> (a,b,ZFProxy c)) laws)
+                                                      maybe (return d) (chooseStep d (goal d) . (\(a,b,c) -> (a,b,unZFProxy c))) m
 		      	      	    BT -> lift $ case hasStepDeriv d of
 				       	       	      True -> do putGoal d'
 						      	      	 return d'
@@ -81,10 +82,10 @@ showNumberedList l = do putStrLn "Applicable laws:"
 putGoal :: Deriv -> IO ()
 putGoal d = putStrLn $ "Goal : " ++ show (goal d)
 
-{-
-chooseStep :: Deriv -> Formula -> (Law, Subst) -> IO Deriv
+
+chooseStep :: Deriv -> Formula -> (Law, Subst, ZFormula) -> IO Deriv
 chooseStep d f l = do let d' = derivStep d f l
                       putGoal d'
                       return d'
--}
+
 proofAssistant lb f = runInputT defaultSettings $ outputStrLn "Starting proof by hand..." >> outputStrLn ("Goal : " ++ show f) >> repl lb (startDeriv f)
