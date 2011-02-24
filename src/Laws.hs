@@ -114,7 +114,7 @@ findLaws zf (LB { laws = ls }) = foldr findLaw mzero ls
             matcher l@(lhs,_) f =  fmap (\s -> (l,s, zf)) $ (>>= unify) $ match lhs f
 	    
 applyl :: Formula -> (Law, Subst, ZFormula) -> Formula
-applyl _ ((lf, rf), s, zf) = reconstruct zf (replace lf' rf' f)
+applyl _ ((lf, rf), s, zf) = normalize $ reconstruct zf (replace lf' rf' f)
                          where lf' = substitute lf s
 			       rf' = substitute rf s
                                f   = getFormula zf

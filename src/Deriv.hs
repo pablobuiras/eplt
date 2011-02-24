@@ -15,7 +15,7 @@ startDeriv :: Formula -> Deriv
 startDeriv f = Deriv { formulae = [f], steps = [] }
 
 derivStep :: Deriv -> Formula -> (Law,Subst, ZFormula) -> Deriv
-derivStep d f (l,s,zf) = let f' = applyl f (l,s,zf)
+derivStep d f (l,s,zf) = let f' = normalize $ applyl f (l,s,zf)
                       in d { formulae = f' : formulae d,
                              steps = Step l s : steps d }
 

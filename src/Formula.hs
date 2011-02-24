@@ -218,6 +218,7 @@ flatten (FEquiv fs) = if (any isEquiv fs) then flatten $ FEquiv $ concatMap from
                           fromEquiv (FEquiv x) = x
                           fromEquiv f          = [f]
 flatten (f1 :=> f2) = (flatten f1) :=> (flatten f2)
+flatten (Not f) = Not $ flatten f
 flatten f = f
 
 -- Auxiliry functions

@@ -19,50 +19,52 @@ import Data.Typeable
 import Control.Exception
 import Exceptions
 
-expand :: Deriv -> Prover Deriv
+expand :: Deriv -> Prover Deriv Deriv
 expand d = let g = goal d
            in do incNodes
-                 applyDerivH d $ fmap (derivStep d g) 
+                 applyDerivH d $ fmap (derivStep d g)
                                       (do lb <- constrainLaws d getLawBank
                                           applyLawH d (enumLaws lb (mkZFormula g)))
 
-allit :: Deriv -> Prover Deriv
+allit :: Deriv -> Prover Deriv Deriv
 allit d = return d `mplus` (expand d >>- prune >>- allit)
 
 pair :: (a -> c) -> (b -> d) -> (a,b) -> (c,d)
 pair f g ~(x,y) = (f x, g y)
-
 
 initState f =  PS { expanded = 0, depth = 0, visited = [f] }
 initEnv =  PE { lawBank = undefined, heuristics = idH }
 
 --testProver m = runProver initState initEnv $ m
 
-reduceTo :: Formula -> Formula -> Prover Deriv
+reduceTo :: Formula -> Formula -> Prover Deriv Deriv
 reduceTo lhs rhs = do d <- allit (startDeriv lhs)
                       guard (goal d == rhs)
                       return d
 
-prove :: LawBank -> Formula -> Maybe (Deriv, ProverState)
-prove lb f = wrapMaybe $ runProver (initState f) (initEnv { lawBank = lb }) (toplevel f)
+prove :: LawBank -> Formula -> Either ProofException (Deriv, ProverState)
+prove lb f = wrap $ runProver (initState f) (initEnv { lawBank = lb }) (toplevel f)
     where toplevel f = once $ f `reduceTo` FTrue
-          wrapMaybe ([],_) = Nothing
-          wrapMaybe (xs,s) = Just (head xs, s)
+          wrap (Left e,_) = Left (ProofTooLong e)
+          wrap (Right [],_) = Left ProofNotFound
+          wrap (Right xs,s) = Right (head xs, s)
 
 
 -- IO Interface
-data ProofNotFoundException = ProofNotFound
-                            deriving Typeable
+data ProofException = ProofNotFound
+                    | ProofTooLong Deriv
+                    deriving Typeable
 
-instance Show ProofNotFoundException where
+instance Show ProofException where
     show ProofNotFound = "Formula does not follow from current axioms."
+    show (ProofTooLong d) = "Proof could not be completed.\nPartial derivation:\n" ++ show d
 
-instance Exception ProofNotFoundException where
+instance Exception ProofException where
     toException = epltExceptionToException
     fromException = epltExceptionFromException
 
 prover :: LawBank -> Formula -> IO (Deriv, ProverState)
-prover lb f = maybe (throwIO ProofNotFound) return $ prove lb (normalize f)
+prover lb f = either throwIO return $ prove lb (normalize f)
 
 
 readInt :: String -> Int
