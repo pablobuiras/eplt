@@ -16,7 +16,7 @@ type Heuristics = (ProverState -> Formula -> LawBank -> LawBank,
                    ProverState -> Formula -> [Deriv] -> [Deriv])
 
 -- magic number
-expThreshold = 2000
+expThreshold = 6000
 
 data ProverState = PS { expanded :: Int, depth :: Int, visited :: [Formula] }
 data ProverEnv = PE { lawBank :: LawBank, heuristics :: Heuristics }

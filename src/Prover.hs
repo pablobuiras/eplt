@@ -80,14 +80,12 @@ showPosLaws lb f = do mapM_ s pl
 -- Trivial Heuristics
 idH :: Heuristics
 idH = (h1, h2, h3)
-    where h1 (PS { visited = fs}) _ lb = if (unit fs) then lb else lb { laws = filter ((<1) . ordGenericLaws) (laws lb) }
+    where h1 (PS { visited = fs}) _ lb = if (unit fs) then lb else lb { laws = filter ((<=2) . ordGenericLaws) (laws lb) }
           h2 _ _ = id
           h3 _ _ = sortBy (comparing (fsize . goal))
           unit (_:[]) = True
 	  unit _      = False
 
-          
-ftest = FEquiv [FAnd [Var "x", Var "x", Var "x", Var "x", Var "x", Var "x"], FAnd [Var "x", FTrue]]
 
 -- Test Heuristics
 --testH :: Heuristics

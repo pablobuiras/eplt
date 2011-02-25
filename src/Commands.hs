@@ -13,6 +13,7 @@ data Command = LoadLaws FilePath
              | Prove Formula
              | Quit
              | Nop
+             | Show String
                deriving (Show)
 
 data CommandAssistant = List

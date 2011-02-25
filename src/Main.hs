@@ -53,6 +53,7 @@ repl lbRef opts = do cmd <- read
     where read = do m <- getInputLine "> "
                     case m of
                       Nothing -> return Quit
+                      Just ('#':c) -> return $ Show c
                       Just [] -> return Nop
                       Just l ->  lift $ parseCmd "<interactive>" l `catch` (\(SomeEPLTException e) -> print e >> return Nop)
           eval c lb =
@@ -82,4 +83,5 @@ repl lbRef opts = do cmd <- read
                                              print d
                                              eval (optPostQed opts f) lb
                 Nop -> return ()
+                Show c -> putStrLn c
 

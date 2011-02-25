@@ -5,6 +5,7 @@ a \/ false -> a
 a /\ b == a == b -> a \/ b
 a \/ b == a == b -> a /\ b
 false -> ~(true)
+~true -> false
 a /\ a -> a
 a \/ a -> a
 a == true -> a
@@ -14,6 +15,6 @@ a /\ b == a -> b == a \/ b
 a \/ b == a -> b == a /\ b
 a /\ b -> a == b == a \/ b
 a \/ b -> a == b == a /\ b
-a => b -> ~(b) => ~(a)
+a => b -> a \/ b == b
 ~(~(a)) -> a
 (~(a)) == b -> ~ ( a == b)

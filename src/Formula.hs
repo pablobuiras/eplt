@@ -94,7 +94,6 @@ reconstruct :: ZFormula -> Formula -> Formula
 reconstruct (CFAndPart (pfs,diff) : cs , _) f   = (normalize.fill) (CFAndPart ([f],diff) : cs , undefined)
 reconstruct (CFOrPart (pfs,diff) : cs , _) f    = (normalize.fill) (CFOrPart ([f],diff) : cs , undefined)
 reconstruct (CFEquivPart (pfs,diff) : cs , _) f = (normalize.fill) (CFEquivPart ([f],diff) : cs , undefined)
---reconstruct ([], _) f                           = normalize f
 reconstruct (cs,_) f                           =  (normalize.fill) (cs,f)--error "Error in reconstruct"
 
 getFormula :: ZFormula -> Formula
@@ -121,9 +120,9 @@ fsize (Var _) = 1
 fsize (FAnd   s) = (foldr max 0 (map fsize s)) + length s
 fsize (FOr    s) = (foldr max 0 (map fsize s)) + length s
 fsize (FEquiv s) = (foldr max 0 (map fsize s)) + length s
-fsize (a :=> b) = max (fsize a) (fsize b) + 1
-fsize (a :<= b) = max (fsize a) (fsize b) + 1
-fsize (a := b) = max (fsize a) (fsize b) + 1
+fsize (a :=> b) = max (fsize a) (fsize b) + 2
+fsize (a :<= b) = max (fsize a) (fsize b) + 2
+fsize (a := b) = max (fsize a) (fsize b) + 2
 fsize (Not f) = fsize f + 1
 
 
