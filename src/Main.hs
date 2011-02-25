@@ -82,6 +82,6 @@ repl lbRef opts = do cmd <- read
                                              print f
                                              print d
                                              eval (optPostQed opts f) lb
-                Nop -> return ()
+                Nop -> putStrLn ""
                 Show c -> putStrLn c
 
